@@ -7,7 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userRole = ref(localStorage.getItem('userRole') || '')
 
   const isLoggedIn = computed(() => !!token.value)
-  const userName = computed(() => userInfo.value?.name || '')
+  const userName = computed(() => userInfo.value?.realName || '')
 
   function login(data) {
     token.value = data.token

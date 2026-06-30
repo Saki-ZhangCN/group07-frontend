@@ -136,6 +136,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
 import { ElMessage } from 'element-plus'
+import { login } from '../../api/auth.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -189,27 +190,20 @@ async function handleLogin() {
     
     loading.value = true
     
-    // 模拟登录成功
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // 构造登录数据
-    const loginData = {
-      token: 'mock_token_' + Date.now(),
-      user: {
-        id: '1',
-        name: selectedRole.value === 'student' ? '学员' : 
-              selectedRole.value === 'teacher' ? '讲师' : '管理员',
-        avatar: '',
-        role: selectedRole.value
-      },
+    const response = await login({
+      username: loginForm.value.username,
+      password: loginForm.value.password,
       role: selectedRole.value
-    }
+    })
     
-    authStore.login(loginData)
+    authStore.login({
+      token: response.token,
+      user: response.userInfo,
+      role: response.userInfo.role
+    })
     
     ElMessage.success('登录成功')
     
-    // 根据角色跳转
     const redirectMap = {
       student: '/student',
       teacher: '/teacher',
@@ -217,8 +211,14 @@ async function handleLogin() {
     }
     router.push(redirectMap[selectedRole.value])
     
-  } catch {
-    // 表单验证失败
+  } catch (error) {
+    if (error.response?.data?.code === 401) {
+      ElMessage.error('账号或密码错误')
+    } else if (error.message) {
+      ElMessage.error(error.message)
+    } else {
+      ElMessage.error('登录失败，请重试')
+    }
   } finally {
     loading.value = false
   }
