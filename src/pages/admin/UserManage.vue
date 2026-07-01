@@ -3,23 +3,25 @@
     <!-- 操作栏 -->
     <div class="action-bar">
       <div class="filters">
-        <el-select v-model="roleFilter" placeholder="用户角色" clearable>
+        <el-select v-model="roleFilter" placeholder="用户角色" clearable @change="handleFilterChange">
           <el-option label="学员" value="student" />
           <el-option label="讲师" value="teacher" />
           <el-option label="管理员" value="admin" />
         </el-select>
         
-        <el-select v-model="statusFilter" placeholder="状态" clearable>
+        <el-select v-model="statusFilter" placeholder="状态" clearable @change="handleFilterChange">
           <el-option label="正常" value="normal" />
           <el-option label="禁用" value="disabled" />
         </el-select>
         
         <el-input
           v-model="searchKeyword"
-          placeholder="搜索用户名/手机号..."
+          placeholder="搜索用户名/学工号..."
           prefix-icon="Search"
           clearable
+          @keyup.enter="handleSearch"
         />
+        <el-button type="primary" @click="handleSearch">搜索</el-button>
       </div>
       
       <div class="actions">
@@ -40,21 +42,27 @@
         <el-table-column label="用户信息" min-width="180">
           <template #default="{ row }">
             <div class="user-info-cell">
-              <el-avatar :size="40" :src="row.avatar">
+              <el-avatar :size="40" :src="row.avatarUrl">
                 <el-icon><UserFilled /></el-icon>
               </el-avatar>
               <div class="user-detail">
-                <span class="user-name">{{ row.name }}</span>
+                <span class="user-name">{{ row.realName || row.username }}</span>
                 <span class="user-email">{{ row.email }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
         
+        <el-table-column label="学工号" width="120">
+          <template #default="{ row }">
+            <span class="emp-no">{{ row.studentNo || row.teacherNo || row.adminNo || '-' }}</span>
+          </template>
+        </el-table-column>
+        
         <el-table-column label="角色" width="100">
           <template #default="{ row }">
             <span class="role-badge" :class="getRoleClass(row.role)">
-              {{ row.roleLabel }}
+              {{ getRoleLabel(row.role) }}
             </span>
           </template>
         </el-table-column>
@@ -62,27 +70,35 @@
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <span class="status-badge" :class="getStatusClass(row.status)">
-              {{ row.statusLabel }}
+              {{ getStatusLabel(row.status) }}
             </span>
           </template>
         </el-table-column>
         
-        <el-table-column label="注册时间" prop="createTime" width="120" />
+        <el-table-column label="注册时间" width="120">
+          <template #default="{ row }">
+            {{ formatTime(row.createTime) }}
+          </template>
+        </el-table-column>
         
-        <el-table-column label="最后登录" prop="lastLogin" width="120" />
+        <el-table-column label="最后登录" width="120">
+          <template #default="{ row }">
+            {{ formatTime(row.lastLoginTime) }}
+          </template>
+        </el-table-column>
         
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button size="small" link @click="editUser(row.id)">编辑</el-button>
-              <el-button size="small" link @click="viewDetail(row.id)">详情</el-button>
+              <el-button size="small" link @click="editUser(row.userId)">编辑</el-button>
+              <el-button size="small" link @click="viewDetail(row.userId)">详情</el-button>
               <el-button 
                 size="small" 
                 link 
-                :type="row.status === 'normal' ? 'warning' : 'success'"
+                :type="row.status === 1 ? 'warning' : 'success'"
                 @click="toggleStatus(row)"
               >
-                {{ row.status === 'normal' ? '禁用' : '启用' }}
+                {{ row.status === 1 ? '禁用' : '启用' }}
               </el-button>
               <el-button size="small" link type="danger" @click="deleteUser(row)">删除</el-button>
             </div>
@@ -100,72 +116,82 @@
         :total="totalCount"
         layout="total, sizes, prev, pager, next"
         background
+        @size-change="handlePageChange"
+        @current-change="handlePageChange"
       />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import request from '../../utils/request.js'
 
 const roleFilter = ref('')
 const statusFilter = ref('')
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalCount = ref(500)
+const totalCount = ref(0)
+const users = ref([])
 
-const users = ref([
-  {
-    id: '1',
-    name: '学员A',
-    email: 'student@example.com',
-    avatar: '',
-    role: 'student',
-    roleLabel: '学员',
-    status: 'normal',
-    statusLabel: '正常',
-    createTime: '2024-01-10',
-    lastLogin: '2024-01-20'
-  },
-  {
-    id: '2',
-    name: '讲师B',
-    email: 'teacher@example.com',
-    avatar: '',
-    role: 'teacher',
-    roleLabel: '讲师',
-    status: 'normal',
-    statusLabel: '正常',
-    createTime: '2024-01-05',
-    lastLogin: '2024-01-19'
-  },
-  {
-    id: '3',
-    name: '学员C',
-    email: 'student2@example.com',
-    avatar: '',
-    role: 'student',
-    roleLabel: '学员',
-    status: 'disabled',
-    statusLabel: '禁用',
-    createTime: '2024-01-08',
-    lastLogin: '2024-01-12'
+onMounted(() => {
+  loadUsers()
+})
+
+async function loadUsers() {
+  try {
+    const params = {
+      page: currentPage.value,
+      size: pageSize.value
+    }
+    if (roleFilter.value) params.role = roleFilter.value
+    if (statusFilter.value) params.status = statusFilter.value === 'normal' ? 1 : 0
+    if (searchKeyword.value) params.keyword = searchKeyword.value
+    
+    const data = await request({ url: '/users', method: 'get', params })
+    users.value = data.users || []
+    totalCount.value = data.total || 0
+  } catch (error) {
+    ElMessage.error('获取用户列表失败')
   }
-])
+}
+
+function handleFilterChange() {
+  currentPage.value = 1
+  loadUsers()
+}
+
+function handleSearch() {
+  currentPage.value = 1
+  loadUsers()
+}
+
+function handlePageChange() {
+  loadUsers()
+}
+
+function getRoleLabel(role) {
+  const map = { student: '学员', teacher: '讲师', admin: '管理员' }
+  return map[role] || role
+}
 
 function getRoleClass(role) {
-  const classMap = {
-    student: 'student',
-    teacher: 'teacher',
-    admin: 'admin'
-  }
-  return classMap[role] || ''
+  return role || ''
+}
+
+function getStatusLabel(status) {
+  return status === 1 ? '正常' : '禁用'
 }
 
 function getStatusClass(status) {
-  return status === 'normal' ? 'normal' : 'disabled'
+  return status === 1 ? 'normal' : 'disabled'
+}
+
+function formatTime(time) {
+  if (!time) return '-'
+  return time.split('T')[0]
 }
 
 function createUser() {
@@ -181,15 +207,16 @@ function viewDetail(id) {
 }
 
 async function toggleStatus(user) {
-  const action = user.status === 'normal' ? '禁用' : '启用'
+  const action = user.status === 1 ? '禁用' : '启用'
   try {
     await ElMessageBox.confirm(`确定要${action}该用户吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    user.status = user.status === 'normal' ? 'disabled' : 'normal'
-    user.statusLabel = user.status === 'normal' ? '正常' : '禁用'
+    const newStatus = user.status === 1 ? 0 : 1
+    await request({ url: `/users/${user.userId}/status`, method: 'put', data: { status: newStatus } })
+    user.status = newStatus
     ElMessage.success(`已${action}该用户`)
   } catch {
     // 取消操作
@@ -204,6 +231,7 @@ async function deleteUser(user) {
       type: 'warning'
     })
     ElMessage.success('用户已删除')
+    loadUsers()
   } catch {
     // 取消删除
   }
@@ -254,6 +282,11 @@ function exportData() {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.emp-no {
+  font-family: monospace;
+  color: var(--gray-600);
 }
 
 .user-detail {

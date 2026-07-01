@@ -1,11 +1,10 @@
 <template>
   <div class="course-audit">
-    <!-- 操作栏 -->
     <div class="action-bar">
       <div class="filters">
-        <el-select v-model="statusFilter" placeholder="审核状态">
+        <el-select v-model="statusFilter" placeholder="审核状态" @change="loadCourses">
           <el-option label="待审核" value="pending" />
-          <el-option label="已通过" value="approved" />
+          <el-option label="已通过" value="online" />
           <el-option label="已拒绝" value="rejected" />
         </el-select>
         
@@ -14,34 +13,30 @@
           placeholder="搜索课程名称..."
           prefix-icon="Search"
           clearable
+          @keyup.enter="loadCourses"
         />
       </div>
     </div>
     
-    <!-- 课程审核列表 -->
     <div class="audit-list">
-      <div class="audit-item" v-for="course in courses" :key="course.id">
+      <div class="audit-item" v-for="course in courses" :key="course.courseId">
         <div class="course-preview">
-          <img :src="course.coverImage" :alt="course.name" class="course-cover" />
+          <img :src="course.coverImage" :alt="course.courseName" class="course-cover" />
           <div class="course-info">
             <div class="course-header">
-              <span class="course-name">{{ course.name }}</span>
+              <span class="course-name">{{ course.courseName }}</span>
               <span class="status-badge" :class="getStatusClass(course.status)">
-                {{ course.statusLabel }}
+                {{ getStatusLabel(course.status) }}
               </span>
             </div>
             <p class="course-meta">
-              讲师：{{ course.teacher }} | 类别：{{ course.category }}
+              讲师：{{ course.teacherName }} | 类别：{{ course.category }}
             </p>
             <p class="course-description">{{ course.description }}</p>
             <div class="course-stats">
               <span class="stat-item">
                 <el-icon><Clock /></el-icon>
-                {{ course.hours }}课时
-              </span>
-              <span class="stat-item">
-                <el-icon><Document /></el-icon>
-                {{ course.chapters }}章节
+                {{ course.totalHours }}课时
               </span>
               <span class="stat-item">
                 <el-icon><Coin /></el-icon>
@@ -53,12 +48,12 @@
         
         <div class="audit-actions">
           <div class="submit-info">
-            <span class="submit-label">提交时间：</span>
-            <span class="submit-time">{{ course.submitTime }}</span>
+            <span class="submit-label">创建时间：</span>
+            <span class="submit-time">{{ formatTime(course.createTime) }}</span>
           </div>
           
           <div class="action-buttons" v-if="course.status === 'pending'">
-            <el-button type="primary" @click="viewDetail(course.id)">
+            <el-button type="primary" @click="viewDetail(course.courseId)">
               查看详情
             </el-button>
             <el-button type="success" @click="approveCourse(course)">
@@ -71,15 +66,14 @@
           
           <div class="audit-result" v-else>
             <span class="result-text" :class="course.status">
-              {{ course.status === 'approved' ? '已于 ' + course.approveTime + ' 通过审核' : '已于 ' + course.rejectTime + ' 拒绝' }}
+              {{ course.status === 'online' ? '审核已通过' : '审核已拒绝' }}
             </span>
-            <el-button size="small" @click="viewDetail(course.id)">查看</el-button>
+            <el-button size="small" @click="viewDetail(course.courseId)">查看</el-button>
           </div>
         </div>
       </div>
     </div>
     
-    <!-- 分页 -->
     <div class="pagination-section">
       <el-pagination
         v-model:current-page="currentPage"
@@ -87,75 +81,66 @@
         :total="totalCount"
         layout="total, sizes, prev, pager, next"
         background
+        @size-change="loadCourses"
+        @current-change="loadCourses"
       />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const statusFilter = ref('pending')
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
-const totalCount = ref(30)
+const totalCount = ref(0)
+const courses = ref([])
 
-const courses = ref([
-  {
-    id: '1',
-    name: 'Vue3从入门到实战',
-    coverImage: 'https://picsum.photos/seed/vue3/400/225',
-    teacher: '张老师',
-    category: '编程开发',
-    description: '本课程将带你从零开始学习Vue3框架...',
-    hours: 48,
-    chapters: 12,
-    price: 99,
-    status: 'pending',
-    statusLabel: '待审核',
-    submitTime: '2024-01-15 10:30'
-  },
-  {
-    id: '2',
-    name: 'React开发实战',
-    coverImage: 'https://picsum.photos/seed/react/400/225',
-    teacher: '李老师',
-    category: '编程开发',
-    description: '深入学习React框架的实战应用...',
-    hours: 36,
-    chapters: 10,
-    price: 129,
-    status: 'approved',
-    statusLabel: '已通过',
-    submitTime: '2024-01-12',
-    approveTime: '2024-01-13'
-  },
-  {
-    id: '3',
-    name: '设计基础入门',
-    coverImage: 'https://picsum.photos/seed/design/400/225',
-    teacher: '王老师',
-    category: '设计艺术',
-    description: '设计基础知识讲解...',
-    hours: 24,
-    chapters: 8,
-    price: 0,
-    status: 'rejected',
-    statusLabel: '已拒绝',
-    submitTime: '2024-01-10',
-    rejectTime: '2024-01-11'
+onMounted(() => {
+  loadCourses()
+})
+
+async function loadCourses() {
+  try {
+    const response = await fetch(`/api/courses/pending-review?page=${currentPage.value}&size=${pageSize.value}&status=${statusFilter.value}`).then(res => res.json())
+    if (response.code === 200) {
+      courses.value = response.data.courses || []
+      totalCount.value = response.data.total || 0
+    } else {
+      ElMessage.error('获取课程列表失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取课程列表失败')
+    console.error(error)
   }
-])
+}
 
 function getStatusClass(status) {
   const classMap = {
     pending: 'pending',
-    approved: 'approved',
-    rejected: 'rejected'
+    online: 'approved',
+    rejected: 'rejected',
+    draft: 'draft'
   }
   return classMap[status] || ''
+}
+
+function getStatusLabel(status) {
+  const labelMap = {
+    pending: '待审核',
+    online: '已通过',
+    rejected: '已拒绝',
+    draft: '草稿'
+  }
+  return labelMap[status] || status
+}
+
+function formatTime(time) {
+  if (!time) return '-'
+  return time.split('T')[0]
 }
 
 function viewDetail(id) {
@@ -169,12 +154,29 @@ async function approveCourse(course) {
       cancelButtonText: '取消',
       type: 'success'
     })
-    course.status = 'approved'
-    course.statusLabel = '已通过'
-    course.approveTime = new Date().toLocaleDateString()
-    ElMessage.success('课程审核通过')
-  } catch {
-    // 取消审核
+    
+    const response = await fetch('/api/courses/review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        courseId: course.courseId,
+        status: 'online',
+        reviewComment: '审核通过'
+      })
+    }).then(res => res.json())
+    
+    if (response.code === 200) {
+      ElMessage.success('课程审核通过')
+      loadCourses()
+    } else {
+      ElMessage.error(response.message || '审核失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('审核失败')
+    }
   }
 }
 
@@ -185,12 +187,34 @@ async function rejectCourse(course) {
       cancelButtonText: '取消',
       inputPlaceholder: '请输入拒绝原因'
     })
-    course.status = 'rejected'
-    course.statusLabel = '已拒绝'
-    course.rejectTime = new Date().toLocaleDateString()
-    ElMessage.success('课程已拒绝')
-  } catch {
-    // 取消拒绝
+    
+    if (!value.trim()) {
+      ElMessage.warning('请输入拒绝原因')
+      return
+    }
+    
+    const response = await fetch('/api/courses/review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        courseId: course.courseId,
+        status: 'rejected',
+        reviewComment: value
+      })
+    }).then(res => res.json())
+    
+    if (response.code === 200) {
+      ElMessage.success('课程已拒绝')
+      loadCourses()
+    } else {
+      ElMessage.error(response.message || '拒绝失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('拒绝失败')
+    }
   }
 }
 </script>

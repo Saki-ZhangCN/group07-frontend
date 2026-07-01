@@ -43,6 +43,23 @@ export function getUserInfo() {
 }
 
 /**
+ * 更新个人信息
+ * @param {Object} data - 更新数据
+ * @param {string} data.email - 邮箱
+ * @param {string} data.phone - 手机号
+ * @param {string} data.parentPhone - 监护人电话（学生）
+ * @param {string} data.introduction - 个人介绍（教师）
+ * @returns {Promise} 更新结果
+ */
+export function updateProfile(data) {
+  return request({
+    url: '/auth/profile',
+    method: 'put',
+    data
+  })
+}
+
+/**
  * 修改密码
  * @param {Object} data - 密码数据
  * @param {string} data.oldPassword - 旧密码

@@ -34,6 +34,7 @@
             <span>课程管理</span>
           </template>
           <el-menu-item index="/admin/courses">课程审核</el-menu-item>
+          <el-menu-item index="/admin/courses/list">课程列表</el-menu-item>
           <el-menu-item index="/admin/resources">资源管理</el-menu-item>
         </el-sub-menu>
         <el-menu-item index="/admin/exams">
@@ -124,6 +125,7 @@ const pageTitle = computed(() => {
     '/admin': '数据看板',
     '/admin/users': '用户管理',
     '/admin/courses': '课程审核',
+    '/admin/courses/list': '课程列表',
     '/admin/resources': '资源管理',
     '/admin/exams': '题库管理',
     '/admin/announcements': '公告管理',

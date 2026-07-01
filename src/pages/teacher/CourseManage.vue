@@ -1,6 +1,5 @@
 <template>
   <div class="course-manage">
-    <!-- 操作栏 -->
     <div class="action-bar">
       <div class="search-box">
         <el-input
@@ -16,144 +15,167 @@
       </el-button>
     </div>
     
-    <!-- 课程列表 -->
-    <div class="course-table">
-      <el-table :data="courses" style="width: 100%">
-        <el-table-column label="课程信息" min-width="200">
-          <template #default="{ row }">
-            <div class="course-info-cell">
-              <img :src="row.coverImage" class="course-thumb" />
-              <div class="course-detail">
-                <span class="course-name">{{ row.name }}</span>
-                <span class="course-category">{{ row.category }}</span>
+    <!-- 三栏分类布局 -->
+    <div class="course-tabs">
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+        <el-tab-pane label="已通过" name="approved">
+          <div class="course-grid">
+            <div v-if="approvedCourses.length === 0" class="empty-tip">
+              <el-empty description="暂无已通过的课程" />
+            </div>
+            <div v-for="course in approvedCourses" :key="course.courseId" class="course-card">
+              <img :src="course.coverImage" class="card-cover" />
+              <div class="card-content">
+                <div class="card-header">
+                  <span class="card-title">{{ course.courseName }}</span>
+                  <span class="status-badge approved">已通过</span>
+                </div>
+                <p class="card-meta">{{ course.category }} | {{ course.totalHours }}课时</p>
+                <p class="card-time">更新时间：{{ formatTime(course.updateTime) }}</p>
+                <div class="card-actions">
+                  <el-button size="small" @click="editCourse(course.courseId)">编辑</el-button>
+                  <el-button size="small" type="primary" @click="viewDetail(course.courseId)">查看详情</el-button>
+                </div>
               </div>
             </div>
-          </template>
-        </el-table-column>
+          </div>
+        </el-tab-pane>
         
-        <el-table-column label="学员数" prop="students" width="100" />
-        
-        <el-table-column label="课时" prop="hours" width="80" />
-        
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <span class="status-badge" :class="getStatusClass(row.status)">
-              {{ row.status }}
-            </span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="评分" width="100">
-          <template #default="{ row }">
-            <span class="rating">
-              <el-icon><Star /></el-icon>
-              {{ row.rating }}
-            </span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="更新时间" prop="updateTime" width="120" />
-        
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button size="small" link @click="editCourse(row.id)">
-                编辑
-              </el-button>
-              <el-button size="small" link type="primary" @click="goToLive(row.id)">
-                直播
-              </el-button>
-              <el-button size="small" link @click="viewAnalysis(row.id)">
-                数据
-              </el-button>
-              <el-button size="small" link type="danger" @click="deleteCourse(row)">
-                删除
-              </el-button>
+        <el-tab-pane label="正在审核" name="reviewing">
+          <div class="course-grid">
+            <div v-if="reviewingCourses.length === 0" class="empty-tip">
+              <el-empty description="暂无正在审核的课程" />
             </div>
-          </template>
-        </el-table-column>
-      </el-table>
+            <div v-for="course in reviewingCourses" :key="course.courseId" class="course-card">
+              <img :src="course.coverImage" class="card-cover" />
+              <div class="card-content">
+                <div class="card-header">
+                  <span class="card-title">{{ course.courseName }}</span>
+                  <span class="status-badge reviewing">审核中</span>
+                </div>
+                <p class="card-meta">{{ course.category }} | {{ course.totalHours }}课时</p>
+                <p class="card-time">提交时间：{{ formatTime(course.updateTime) }}</p>
+                <div class="card-actions">
+                  <el-button size="small" @click="editCourse(course.courseId)">编辑</el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        
+        <el-tab-pane label="草稿" name="draft">
+          <div class="course-grid">
+            <div v-if="draftCourses.length === 0" class="empty-tip">
+              <el-empty description="暂无草稿课程" />
+            </div>
+            <div v-for="course in draftCourses" :key="course.courseId" class="course-card">
+              <img :src="course.coverImage" class="card-cover" />
+              <div class="card-content">
+                <div class="card-header">
+                  <span class="card-title">{{ course.courseName }}</span>
+                  <span class="status-badge draft">草稿</span>
+                </div>
+                <p class="card-meta">{{ course.category }} | {{ course.totalHours }}课时</p>
+                <p class="card-time">更新时间：{{ formatTime(course.updateTime) }}</p>
+                <div class="card-actions">
+                  <el-button size="small" @click="editCourse(course.courseId)">编辑</el-button>
+                  <el-button size="small" type="primary" @click="submitReview(course.courseId)">提交审核</el-button>
+                  <el-button size="small" type="danger" @click="deleteCourse(course)">删除</el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        
+        <el-tab-pane label="未通过" name="rejected">
+          <div class="course-grid">
+            <div v-if="rejectedCourses.length === 0" class="empty-tip">
+              <el-empty description="暂无未通过的课程" />
+            </div>
+            <div v-for="course in rejectedCourses" :key="course.courseId" class="course-card">
+              <img :src="course.coverImage" class="card-cover" />
+              <div class="card-content">
+                <div class="card-header">
+                  <span class="card-title">{{ course.courseName }}</span>
+                  <span class="status-badge rejected">未通过</span>
+                </div>
+                <p class="card-meta">{{ course.category }} | {{ course.totalHours }}课时</p>
+                <p class="card-reason" v-if="course.reviewComment">驳回原因：{{ course.reviewComment }}</p>
+                <p class="card-time">更新时间：{{ formatTime(course.updateTime) }}</p>
+                <div class="card-actions">
+                  <el-button size="small" @click="editCourse(course.courseId)">编辑修改</el-button>
+                  <el-button size="small" type="primary" @click="submitReview(course.courseId)">重新提交</el-button>
+                  <el-button size="small" type="danger" @click="deleteCourse(course)">删除</el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
     
-    <!-- 分页 -->
-    <div class="pagination-section">
-      <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        :total="totalCount"
-        layout="total, sizes, prev, pager, next"
-        background
-      />
+    <!-- 统计信息 -->
+    <div class="stats-bar">
+      <span class="stat-item">已通过：<strong>{{ approvedCourses.length }}</strong> 门</span>
+      <span class="stat-item">正在审核：<strong>{{ reviewingCourses.length }}</strong> 门</span>
+      <span class="stat-item">未通过：<strong>{{ rejectedCourses.length }}</strong> 门</span>
+      <span class="stat-item">草稿：<strong>{{ draftCourses.length }}</strong> 门</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getTeacherCourses, deleteCourse as deleteCourseApi, submitCourseForReview } from '../../api/course.js'
 
 const router = useRouter()
 
 const searchKeyword = ref('')
-const currentPage = ref(1)
-const pageSize = ref(10)
-const totalCount = ref(50)
+const activeTab = ref('approved')
+const courses = ref([])
 
-const courses = ref([
-  {
-    id: '1',
-    name: 'Java编程基础：从入门到精通',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/t1/100/60',
-    students: 356,
-    hours: 48,
-    status: '已发布',
-    rating: 4.8,
-    updateTime: '2024-01-15'
-  },
-  {
-    id: '2',
-    name: 'Python数据分析实战',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/t2/100/60',
-    students: 285,
-    hours: 36,
-    status: '审核中',
-    rating: 4.6,
-    updateTime: '2024-01-10'
-  },
-  {
-    id: '3',
-    name: 'Web前端开发完整教程',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/t3/100/60',
-    students: 617,
-    hours: 60,
-    status: '已发布',
-    rating: 4.9,
-    updateTime: '2024-01-08'
-  },
-  {
-    id: '4',
-    name: '数据库原理与应用',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/t4/100/60',
-    students: 142,
-    hours: 32,
-    status: '草稿',
-    rating: 0,
-    updateTime: '2024-01-05'
-  }
-])
+// 按状态分类的课程列表
+const approvedCourses = computed(() => {
+  return courses.value.filter(c => c.status === 'online' && (!searchKeyword.value || c.courseName.includes(searchKeyword.value)))
+})
 
-function getStatusClass(status) {
-  const classMap = {
-    '已发布': 'published',
-    '审核中': 'reviewing',
-    '草稿': 'draft'
+const reviewingCourses = computed(() => {
+  return courses.value.filter(c => c.status === 'pending' && (!searchKeyword.value || c.courseName.includes(searchKeyword.value)))
+})
+
+// 草稿课程：从未提交审核的课程
+const draftCourses = computed(() => {
+  return courses.value.filter(c => c.status === 'draft' && (!searchKeyword.value || c.courseName.includes(searchKeyword.value)))
+})
+
+// 未通过的课程：审核被驳回的课程
+const rejectedCourses = computed(() => {
+  return courses.value.filter(c => c.status === 'rejected' && (!searchKeyword.value || c.courseName.includes(searchKeyword.value)))
+})
+
+onMounted(() => {
+  loadCourses()
+})
+
+async function loadCourses() {
+  try {
+    const response = await getTeacherCourses()
+    courses.value = response.courses || []
+  } catch (error) {
+    ElMessage.error('获取课程列表失败')
+    console.error(error)
   }
-  return classMap[status] || ''
+}
+
+function handleTabChange() {
+  // 切换tab时可以做一些额外操作
+}
+
+function formatTime(time) {
+  if (!time) return '-'
+  return time.split('T')[0]
 }
 
 function createCourse() {
@@ -164,12 +186,18 @@ function editCourse(id) {
   router.push(`/teacher/course/edit/${id}`)
 }
 
-function goToLive(id) {
-  router.push('/teacher/live/teaching')
+function viewDetail(id) {
+  ElMessage.info('查看课程详情')
 }
 
-function viewAnalysis(id) {
-  router.push(`/teacher/analysis?course=${id}`)
+async function submitReview(courseId) {
+  try {
+    await submitCourseForReview(courseId)
+    ElMessage.success('提交审核成功')
+    loadCourses()
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '提交审核失败')
+  }
 }
 
 async function deleteCourse(course) {
@@ -179,9 +207,13 @@ async function deleteCourse(course) {
       cancelButtonText: '取消',
       type: 'warning'
     })
+    await deleteCourseApi(course.courseId)
     ElMessage.success('课程已删除')
-  } catch {
-    // 取消删除
+    loadCourses()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '删除失败')
+    }
   }
 }
 </script>
@@ -204,45 +236,88 @@ async function deleteCourse(course) {
   width: 300px;
 }
 
-.course-table {
-  margin-bottom: var(--spacing-xl);
+.course-tabs {
+  margin-bottom: var(--spacing-lg);
 }
 
-.course-info-cell {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) 0;
 }
 
-.course-thumb {
-  width: 60px;
-  height: 36px;
-  border-radius: var(--radius-md);
+.empty-tip {
+  padding: var(--spacing-xl) 0;
+}
+
+.course-card {
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.course-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-cover {
+  width: 100%;
+  height: 140px;
   object-fit: cover;
 }
 
-.course-detail {
-  display: flex;
-  flex-direction: column;
+.card-content {
+  padding: var(--spacing-md);
 }
 
-.course-name {
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-title {
   font-weight: 500;
   color: var(--gray-800);
+  font-size: var(--font-size-base);
 }
 
-.course-category {
-  font-size: var(--font-size-xs);
+.card-meta {
+  font-size: var(--font-size-sm);
   color: var(--gray-500);
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-time {
+  font-size: var(--font-size-xs);
+  color: var(--gray-400);
+  margin-bottom: var(--spacing-md);
+}
+
+.card-reason {
+  font-size: var(--font-size-sm);
+  color: var(--red-500);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
 }
 
 .status-badge {
-  padding: 4px 12px;
+  padding: 4px 8px;
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
 }
 
-.status-badge.published {
+.status-badge.approved {
   background: rgba(34, 197, 94, 0.1);
   color: var(--green-500);
 }
@@ -257,24 +332,27 @@ async function deleteCourse(course) {
   color: var(--gray-500);
 }
 
-.rating {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
+.status-badge.rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red-500);
 }
 
-.rating .el-icon {
-  color: var(--yellow-400);
+.stats-bar {
+  display: flex;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-lg);
 }
 
-.action-buttons {
-  display: flex;
-  gap: var(--spacing-md);
+.stat-item {
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
 }
 
-.pagination-section {
-  display: flex;
-  justify-content: center;
+.stat-item strong {
+  color: var(--primary-500);
 }
 
 @media (max-width: 767px) {
@@ -285,6 +363,15 @@ async function deleteCourse(course) {
   
   .search-box {
     width: 100%;
+  }
+  
+  .course-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-bar {
+    flex-direction: column;
+    gap: var(--spacing-sm);
   }
 }
 </style>

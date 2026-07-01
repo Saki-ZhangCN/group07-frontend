@@ -1,6 +1,5 @@
 <template>
   <div class="course-center">
-    <!-- 搜索和筛选 -->
     <div class="search-filter-section">
       <div class="search-box">
         <el-input
@@ -20,46 +19,26 @@
         <button 
           class="category-btn" 
           :class="{ active: selectedCategory === '' }"
-          @click="selectedCategory = ''"
+          @click="selectedCategory = ''; handleSearch()"
         >
           全部
         </button>
         <button 
+          v-for="category in categories" 
+          :key="category"
           class="category-btn" 
-          :class="{ active: selectedCategory === 'programming' }"
-          @click="selectedCategory = 'programming'"
+          :class="{ active: selectedCategory === category }"
+          @click="selectedCategory = category; handleSearch()"
         >
-          编程开发
-        </button>
-        <button 
-          class="category-btn" 
-          :class="{ active: selectedCategory === 'design' }"
-          @click="selectedCategory = 'design'"
-        >
-          设计艺术
-        </button>
-        <button 
-          class="category-btn" 
-          :class="{ active: selectedCategory === 'language' }"
-          @click="selectedCategory = 'language'"
-        >
-          语言学习
-        </button>
-        <button 
-          class="category-btn" 
-          :class="{ active: selectedCategory === 'math' }"
-          @click="selectedCategory = 'math'"
-        >
-          数学科学
+          {{ category }}
         </button>
       </div>
     </div>
     
-    <!-- 课程列表 -->
     <div class="courses-section">
       <div class="courses-header">
-        <span class="courses-count">共 {{ courses.length }} 门课程</span>
-        <el-select v-model="sortBy" placeholder="排序方式" size="default">
+        <span class="courses-count">共 {{ totalCount }} 门课程</span>
+        <el-select v-model="sortBy" placeholder="排序方式" size="default" @change="handleSearch">
           <el-option label="最新发布" value="latest" />
           <el-option label="评分最高" value="rating" />
           <el-option label="学习人数" value="students" />
@@ -71,40 +50,33 @@
         <div 
           class="course-card" 
           v-for="course in courses" 
-          :key="course.id"
-          @click="goToDetail(course.id)"
+          :key="course.courseId"
+          @click="goToDetail(course.courseId)"
         >
           <div class="course-cover">
-            <img :src="course.coverImage" :alt="course.name" />
-            <span class="badge badge-live" v-if="course.isLive">
-              <span class="live-dot"></span>
-              直播中
-            </span>
-            <span class="badge badge-success" v-if="course.isFree">
-              免费
-            </span>
+            <img :src="course.coverImage" :alt="course.courseName" />
           </div>
           <div class="course-info">
             <div class="course-category">
               <span class="tag">{{ course.category }}</span>
             </div>
-            <h3 class="course-name">{{ course.name }}</h3>
-            <p class="course-teacher">{{ course.teacher }}</p>
+            <h3 class="course-name">{{ course.courseName }}</h3>
+            <p class="course-teacher">{{ course.teacherName }}</p>
             <div class="course-meta">
               <span class="course-rating">
                 <el-icon><Star /></el-icon>
-                {{ course.rating }}
+                {{ course.rating || '暂无评分' }}
               </span>
               <span class="course-students">
-                {{ course.students }}人学习
+                {{ course.studentCount }}人学习
               </span>
             </div>
             <div class="course-footer">
               <div class="course-price">
-                <span class="price-current" v-if="!course.isFree">¥{{ course.price }}</span>
+                <span class="price-current" v-if="course.price > 0">¥{{ course.price }}</span>
                 <span class="price-free" v-else>免费</span>
               </div>
-              <el-button type="primary" size="small" @click.stop="handleEnroll(course.id)">
+              <el-button type="primary" size="small" @click.stop="handleEnroll(course)">
                 选课
               </el-button>
             </div>
@@ -117,8 +89,7 @@
         <p>暂无相关课程</p>
       </div>
       
-      <!-- 分页 -->
-      <div class="pagination-section" v-if="courses.length">
+      <div class="pagination-section" v-if="totalCount > 0">
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -126,6 +97,8 @@
           :total="totalCount"
           layout="total, sizes, prev, pager, next"
           background
+          @size-change="handleSearch"
+          @current-change="handleSearch"
         />
       </div>
     </div>
@@ -133,9 +106,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getCourseList, enrollCourse } from '../../api/course.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -145,107 +119,45 @@ const selectedCategory = ref('')
 const sortBy = ref('latest')
 const currentPage = ref(1)
 const pageSize = ref(12)
-const totalCount = ref(100)
+const totalCount = ref(0)
+const courses = ref([])
+const categories = ref(['编程开发', '设计艺术', '语言学习', '数学科学'])
 
-const courses = ref([
-  {
-    id: '1',
-    name: 'Java编程基础：从入门到精通',
-    teacher: '王老师',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/java1/400/225',
-    rating: 4.8,
-    students: 2568,
-    price: 99,
-    isFree: false,
-    isLive: true
-  },
-  {
-    id: '2',
-    name: 'Python数据分析实战',
-    teacher: '李老师',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/python2/400/225',
-    rating: 4.6,
-    students: 1235,
-    price: 0,
-    isFree: true,
-    isLive: false
-  },
-  {
-    id: '3',
-    name: 'Web前端开发完整教程',
-    teacher: '张老师',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/web3/400/225',
-    rating: 4.9,
-    students: 3250,
-    price: 199,
-    isFree: false,
-    isLive: false
-  },
-  {
-    id: '4',
-    name: '数据库原理与应用',
-    teacher: '陈老师',
-    category: '编程开发',
-    coverImage: 'https://picsum.photos/seed/db4/400/225',
-    rating: 4.5,
-    students: 856,
-    price: 149,
-    isFree: false,
-    isLive: true
-  },
-  {
-    id: '5',
-    name: 'UI设计从零开始',
-    teacher: '刘老师',
-    category: '设计艺术',
-    coverImage: 'https://picsum.photos/seed/ui5/400/225',
-    rating: 4.7,
-    students: 1650,
-    price: 129,
-    isFree: false,
-    isLive: false
-  },
-  {
-    id: '6',
-    name: '英语口语提升班',
-    teacher: '赵老师',
-    category: '语言学习',
-    coverImage: 'https://picsum.photos/seed/eng6/400/225',
-    rating: 4.4,
-    students: 2156,
-    price: 0,
-    isFree: true,
-    isLive: false
-  }
-])
-
-// 从路由获取搜索关键词
 onMounted(() => {
   if (route.query.keyword) {
     searchKeyword.value = route.query.keyword
-    handleSearch()
   }
+  handleSearch()
 })
 
-watch([selectedCategory, sortBy, currentPage], () => {
-  // 加载课程数据
-})
-
-function handleSearch() {
-  currentPage.value = 1
-  // 调用API搜索课程
+async function handleSearch() {
+  try {
+    const response = await getCourseList({
+      keyword: searchKeyword.value,
+      category: selectedCategory.value || undefined,
+      page: currentPage.value,
+      size: pageSize.value
+    })
+    courses.value = response.courses || []
+    totalCount.value = response.total || 0
+  } catch (error) {
+    ElMessage.error('获取课程列表失败')
+    console.error(error)
+  }
 }
 
 function goToDetail(courseId) {
   router.push(`/student/course/${courseId}`)
 }
 
-function handleEnroll(courseId) {
-  ElMessage.success('选课成功，开始学习吧！')
-  router.push(`/student/study/${courseId}`)
+async function handleEnroll(course) {
+  try {
+    await enrollCourse(course.courseId)
+    ElMessage.success('选课成功！')
+    handleSearch()
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '选课失败')
+  }
 }
 </script>
 
@@ -350,18 +262,6 @@ function handleEnroll(courseId) {
 
 .course-card:hover .course-cover img {
   transform: scale(1.05);
-}
-
-.course-cover .badge {
-  position: absolute;
-  top: var(--spacing-md);
-  right: var(--spacing-md);
-}
-
-.course-cover .badge-success {
-  top: var(--spacing-md);
-  left: var(--spacing-md);
-  right: auto;
 }
 
 .course-info {
