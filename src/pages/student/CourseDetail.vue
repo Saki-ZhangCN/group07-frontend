@@ -1,183 +1,182 @@
 <template>
   <div class="course-detail">
-    <!-- 课程头部 -->
-    <div class="course-header">
-      <div class="course-cover-large">
-        <img :src="course.coverImage" :alt="course.name" />
-        <div class="play-overlay" v-if="isEnrolled">
-          <el-button type="primary" size="large" circle @click="startStudy">
-            <el-icon :size="32"><VideoPlay /></el-icon>
-          </el-button>
-        </div>
-      </div>
-      
-      <div class="course-header-info">
-        <div class="course-category-tag">
-          <span class="badge badge-primary">{{ course.category }}</span>
-          <span class="badge badge-live" v-if="course.isLive">
-            <span class="live-dot"></span>
-            直播中
-          </span>
-        </div>
-        
-        <h1 class="course-title">{{ course.name }}</h1>
-        
-        <div class="course-stats">
-          <div class="stat-item">
-            <el-icon><Star /></el-icon>
-            <span class="stat-value">{{ course.rating }}</span>
-            <span class="stat-label">评分</span>
-          </div>
-          <div class="stat-item">
-            <el-icon><User /></el-icon>
-            <span class="stat-value">{{ course.students }}</span>
-            <span class="stat-label">学员</span>
-          </div>
-          <div class="stat-item">
-            <el-icon><Clock /></el-icon>
-            <span class="stat-value">{{ course.duration }}</span>
-            <span class="stat-label">时长</span>
-          </div>
-        </div>
-        
-        <div class="course-teacher-info">
-          <el-avatar :size="48" :src="course.teacherAvatar">
-            <el-icon><UserFilled /></el-icon>
-          </el-avatar>
-          <div class="teacher-detail">
-            <span class="teacher-name">{{ course.teacher }}</span>
-            <span class="teacher-title">{{ course.teacherTitle }}</span>
-          </div>
-        </div>
-        
-        <div class="course-actions">
-          <div class="course-price-section">
-            <span class="price-label">课程价格</span>
-            <span class="price-value" v-if="course.price > 0">¥{{ course.price }}</span>
-            <span class="price-free" v-else>免费</span>
-          </div>
-          
-          <div class="action-buttons">
-            <el-button 
-              type="primary" 
-              size="large" 
-              v-if="!isEnrolled"
-              @click="handleEnroll"
-            >
-              立即选课
-            </el-button>
-            <el-button 
-              type="primary" 
-              size="large" 
-              v-else
-              @click="startStudy"
-            >
-              继续学习
-            </el-button>
-            <el-button size="large" @click="handleFavorite">
-              <el-icon><Star /></el-icon>
-              收藏
-            </el-button>
-          </div>
-        </div>
-      </div>
+    <div v-if="loading" class="loading-container">
+      <el-spinner size="large" />
     </div>
     
-    <!-- 课程内容 -->
-    <div class="course-content">
-      <div class="content-main">
-        <!-- 课程简介 -->
-        <section class="content-section">
-          <h2 class="section-title">课程简介</h2>
-          <div class="course-description">
-            <p>{{ course.description }}</p>
+    <template v-else>
+      <!-- 课程头部 -->
+      <div class="course-header">
+        <div class="course-cover-large">
+          <img :src="courseCoverUrl(course.coverImage)" :alt="course.courseName" @error="useFallbackCover" />
+          <div class="play-overlay" v-if="isEnrolled">
+            <el-button type="primary" size="large" circle @click="startStudy">
+              <el-icon :size="32"><VideoPlay /></el-icon>
+            </el-button>
           </div>
-        </section>
+        </div>
         
-        <!-- 课程大纲 -->
-        <section class="content-section">
-          <h2 class="section-title">课程大纲</h2>
-          <div class="chapters-list">
-            <div 
-              class="chapter-item" 
-              v-for="(chapter, index) in course.chapters" 
-              :key="chapter.id"
-            >
-              <div class="chapter-header">
-                <span class="chapter-number">第{{ index + 1 }}章</span>
-                <span class="chapter-title">{{ chapter.title }}</span>
-                <span class="chapter-duration">{{ chapter.duration }}</span>
-              </div>
-              <div class="chapter-lessons">
-                <div 
-                  class="lesson-item" 
-                  v-for="lesson in chapter.lessons" 
-                  :key="lesson.id"
-                  :class="{ completed: lesson.completed }"
-                >
-                  <div class="lesson-icon">
-                    <el-icon v-if="lesson.completed"><CircleCheck /></el-icon>
-                    <el-icon v-else><VideoPlay /></el-icon>
-                  </div>
-                  <span class="lesson-title">{{ lesson.title }}</span>
-                  <span class="lesson-duration">{{ lesson.duration }}</span>
-                </div>
-              </div>
+        <div class="course-header-info">
+          <div class="course-category-tag">
+            <span class="badge badge-primary">{{ course.category }}</span>
+          </div>
+          
+          <h1 class="course-title">{{ course.courseName }}</h1>
+          
+          <div class="course-id">课程编号：{{ course.courseId }}</div>
+          
+          <div class="course-stats">
+            <div class="stat-item">
+              <el-icon><Star /></el-icon>
+              <span class="stat-value">{{ course.rating }}</span>
+              <span class="stat-label">评分</span>
+            </div>
+            <div class="stat-item">
+              <el-icon><User /></el-icon>
+              <span class="stat-value">{{ course.studentCount }}</span>
+              <span class="stat-label">学员</span>
+            </div>
+            <div class="stat-item">
+              <el-icon><Clock /></el-icon>
+              <span class="stat-value">{{ formatDuration(course.totalHours) }}</span>
+              <span class="stat-label">时长</span>
             </div>
           </div>
-        </section>
-        
-        <!-- 课程评价 -->
-        <section class="content-section">
-          <h2 class="section-title">学员评价</h2>
-          <div class="reviews-list">
-            <div class="review-item" v-for="review in reviews" :key="review.id">
-              <div class="review-header">
-                <el-avatar :size="40" :src="review.avatar">
-                  <el-icon><UserFilled /></el-icon>
-                </el-avatar>
-                <div class="review-user">
-                  <span class="review-name">{{ review.userName }}</span>
-                  <span class="review-date">{{ review.date }}</span>
-                </div>
-                <div class="review-rating">
-                  <el-icon v-for="n in 5" :key="n" :class="{ active: n <= review.rating }">
-                    <Star />
-                  </el-icon>
-                </div>
-              </div>
-              <div class="review-content">
-                <p>{{ review.content }}</p>
-              </div>
+          
+          <div class="course-teacher-info">
+            <el-avatar :size="48">
+              <el-icon><UserFilled /></el-icon>
+            </el-avatar>
+            <div class="teacher-detail">
+              <span class="teacher-name">{{ course.teacherName }}</span>
+              <span class="teacher-title">{{ course.teacherTitle }}</span>
             </div>
           </div>
-        </section>
+          
+          <div class="course-actions">
+            <div class="course-price-section">
+              <span class="price-label">课程价格</span>
+              <span class="price-value" v-if="course.price > 0">¥{{ course.price }}</span>
+              <span class="price-free" v-else>免费</span>
+            </div>
+            
+            <div class="action-buttons">
+              <el-button 
+                type="primary" 
+                size="large" 
+                v-if="!isEnrolled && course.status === 'online'"
+                @click="handleEnroll"
+              >
+                选课
+              </el-button>
+              <el-button 
+                type="primary" 
+                size="large" 
+                v-else-if="isEnrolled"
+                @click="startStudy"
+              >
+                继续学习
+              </el-button>
+              <el-button 
+                size="large" 
+                disabled
+                v-else
+              >
+                {{ course.status === 'pending' ? '审核中' : '暂未上线' }}
+              </el-button>
+              <el-button size="large" @click="handleFavorite">
+                <el-icon><Star /></el-icon>
+                收藏
+              </el-button>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <!-- 右侧推荐 -->
-      <div class="content-sidebar">
-        <div class="sidebar-card">
-          <h3 class="sidebar-title">相关推荐</h3>
-          <div class="recommend-list">
-            <div 
-              class="recommend-item" 
-              v-for="item in recommendations" 
-              :key="item.id"
-              @click="goToCourse(item.id)"
-            >
-              <img :src="item.coverImage" :alt="item.name" class="recommend-cover" />
-              <div class="recommend-info">
-                <span class="recommend-name">{{ item.name }}</span>
-                <span class="recommend-rating">
-                  <el-icon><Star /></el-icon>
-                  {{ item.rating }}
-                </span>
+      <!-- 课程内容 -->
+      <div class="course-content">
+        <div class="content-main">
+          <!-- 课程简介 -->
+          <section class="content-section">
+            <h2 class="section-title">课程简介</h2>
+            <div class="course-description">
+              <p>{{ course.description }}</p>
+            </div>
+          </section>
+          
+          <!-- 课程大纲 -->
+          <section class="content-section">
+            <h2 class="section-title">课程大纲</h2>
+            <div class="chapters-list">
+              <div 
+                class="chapter-item" 
+                v-for="(chapter, index) in chapters" 
+                :key="chapter.chapterId"
+              >
+                <div class="chapter-header">
+                  <span class="chapter-number">第{{ index + 1 }}章</span>
+                  <span class="chapter-title">{{ chapter.chapterName }}</span>
+                  <span class="chapter-duration">{{ chapter.duration ? Math.round(chapter.duration / 60) + '分钟' : '' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          
+          <!-- 课程评价 -->
+          <section class="content-section">
+            <h2 class="section-title">学员评价</h2>
+            <div class="reviews-list" v-if="reviews.length > 0">
+              <div class="review-item" v-for="review in reviews" :key="review.reviewId">
+                <div class="review-header">
+                  <el-avatar :size="40">
+                    <el-icon><UserFilled /></el-icon>
+                  </el-avatar>
+                  <div class="review-user">
+                    <span class="review-name">{{ review.userName }}</span>
+                    <span class="review-date">{{ review.createTime }}</span>
+                  </div>
+                  <div class="review-rating">
+                    <el-icon v-for="n in 5" :key="n" :class="{ active: n <= review.rating }">
+                      <Star />
+                    </el-icon>
+                  </div>
+                </div>
+                <div class="review-content">
+                  <p>{{ review.content }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="empty-reviews" v-else>
+              <el-empty description="暂无评价" />
+            </div>
+          </section>
+        </div>
+        
+        <!-- 右侧推荐 -->
+        <div class="content-sidebar">
+          <div class="sidebar-card">
+            <h3 class="sidebar-title">相关推荐</h3>
+            <div class="recommend-list">
+              <div 
+                class="recommend-item" 
+                v-for="item in recommendations" 
+                :key="item.courseId"
+                @click="goToCourse(item.courseId)"
+              >
+                <img :src="courseCoverUrl(item.coverImage)" :alt="item.courseName" class="recommend-cover" @error="useFallbackCover" />
+                <div class="recommend-info">
+                  <span class="recommend-name">{{ item.courseName }}</span>
+                  <span class="recommend-rating">
+                    <el-icon><Star /></el-icon>
+                    {{ item.rating || 0 }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -185,104 +184,68 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
+import { getCourseDetail, enrollCourse, getCourseReviews, favoriteCourse, getCourseChapters } from '../../api/course.js'
 
 const router = useRouter()
 const route = useRoute()
 
 const courseId = route.params.id
 const isEnrolled = ref(false)
+const loading = ref(true)
 
 const course = ref({
-  id: courseId,
-  name: 'Java编程基础：从入门到精通',
-  category: '编程开发',
-  coverImage: 'https://picsum.photos/seed/java-detail/800/450',
-  rating: 4.8,
-  students: 2568,
-  duration: '48小时',
-  price: 99,
-  isLive: true,
-  teacher: '王老师',
-  teacherTitle: '资深Java开发工程师',
-  teacherAvatar: '',
-  description: '本课程从Java基础语法开始，逐步深入到面向对象编程、集合框架、多线程编程、网络编程等核心内容。通过大量实战案例，帮助学员掌握Java开发的各项技能，为后续的企业级开发打下坚实基础。',
-  chapters: [
-    {
-      id: '1',
-      title: 'Java语言基础',
-      duration: '8小时',
-      lessons: [
-        { id: '1-1', title: 'Java概述与环境搭建', duration: '30分钟', completed: true },
-        { id: '1-2', title: '基本数据类型', duration: '45分钟', completed: true },
-        { id: '1-3', title: '运算符与表达式', duration: '40分钟', completed: false }
-      ]
-    },
-    {
-      id: '2',
-      title: '面向对象编程',
-      duration: '12小时',
-      lessons: [
-        { id: '2-1', title: '类与对象', duration: '50分钟', completed: false },
-        { id: '2-2', title: '继承与多态', duration: '60分钟', completed: false },
-        { id: '2-3', title: '接口与抽象类', duration: '55分钟', completed: false }
-      ]
-    },
-    {
-      id: '3',
-      title: '集合框架',
-      duration: '10小时',
-      lessons: [
-        { id: '3-1', title: 'List接口与实现类', duration: '45分钟', completed: false },
-        { id: '3-2', title: 'Set接口与实现类', duration: '40分钟', completed: false },
-        { id: '3-3', title: 'Map接口与实现类', duration: '50分钟', completed: false }
-      ]
-    }
-  ]
+  courseId: '',
+  courseName: '',
+  category: '',
+  coverImage: '',
+  rating: 0,
+  studentCount: 0,
+  totalHours: 0,
+  price: 0,
+  description: '',
+  teacherId: '',
+  teacherName: '',
+  teacherTitle: '',
+  status: ''
 })
 
-const reviews = ref([
-  {
-    id: '1',
-    userName: '学员A',
-    avatar: '',
-    date: '2024-01-15',
-    rating: 5,
-    content: '课程内容非常详细，老师讲解清晰易懂，非常适合初学者入门。'
-  },
-  {
-    id: '2',
-    userName: '学员B',
-    avatar: '',
-    date: '2024-01-12',
-    rating: 4,
-    content: '整体不错，但是部分章节的练习题可以再多一些。'
-  }
-])
+const reviews = ref([])
+const chapters = ref([])
+const recommendations = ref([])
 
-const recommendations = ref([
-  {
-    id: '4',
-    name: '数据库原理与应用',
-    coverImage: 'https://picsum.photos/seed/db-rec/200/120',
-    rating: 4.5
-  },
-  {
-    id: '5',
-    name: 'Web前端开发',
-    coverImage: 'https://picsum.photos/seed/web-rec/200/120',
-    rating: 4.9
-  },
-  {
-    id: '6',
-    name: 'Spring Boot实战',
-    coverImage: 'https://picsum.photos/seed/spring-rec/200/120',
-    rating: 4.7
+function formatDuration(hours) {
+  if (!hours) return '0小时'
+  if (hours >= 1) {
+    return hours + '小时'
   }
-])
+  return Math.round(hours * 60) + '分钟'
+}
+
+function checkEnrollStatus() {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    isEnrolled.value = false
+    return
+  }
+  
+  getCourseDetail(courseId).then(data => {
+    if (data.enrolled) {
+      isEnrolled.value = true
+    }
+  }).catch(() => {
+    isEnrolled.value = false
+  })
+}
 
 function handleEnroll() {
-  ElMessage.success('选课成功！')
-  isEnrolled.value = true
+  enrollCourse(courseId).then(() => {
+    ElMessage.success('选课成功！')
+    isEnrolled.value = true
+    course.value.studentCount++
+  }).catch(error => {
+    ElMessage.error(error.message || '选课失败')
+  })
 }
 
 function startStudy() {
@@ -290,15 +253,74 @@ function startStudy() {
 }
 
 function handleFavorite() {
-  ElMessage.success('已收藏课程')
+  favoriteCourse(courseId).then(() => {
+    ElMessage.success('已收藏课程')
+  }).catch(error => {
+    ElMessage.error(error.message || '收藏失败')
+  })
 }
 
 function goToCourse(id) {
   router.push(`/student/course/${id}`)
 }
 
+function loadCourseDetail() {
+  loading.value = true
+  getCourseDetail(courseId).then(data => {
+    course.value = {
+      courseId: data.courseId,
+      courseName: data.courseName,
+      category: data.category,
+      coverImage: data.coverImage || '/uploads/default-image.jpg',
+      rating: data.rating || 0,
+      studentCount: data.studentCount || 0,
+      totalHours: data.totalHours || 0,
+      price: data.price || 0,
+      description: data.description || '',
+      teacherId: data.teacherId,
+      teacherName: data.teacherName || '',
+      teacherTitle: data.teacherTitle || '',
+      status: data.status
+    }
+    if (data.enrolled !== undefined) {
+      isEnrolled.value = data.enrolled
+    }
+    loading.value = false
+  }).catch(error => {
+    ElMessage.error('获取课程详情失败: ' + (error.message || ''))
+    loading.value = false
+  })
+}
+
+function loadReviews() {
+  getCourseReviews(courseId, { page: 1, size: 5 }).then(data => {
+    reviews.value = data.reviews || []
+  }).catch(() => {
+    reviews.value = []
+  })
+}
+
+function loadChapters() {
+  getCourseChapters(courseId).then(data => {
+    chapters.value = data.chapters || []
+  }).catch(() => {
+    chapters.value = []
+  })
+}
+
+function loadRecommendations() {
+  getCourseDetail(courseId).then(data => {
+    recommendations.value = data.recommendations || []
+  }).catch(() => {
+    recommendations.value = []
+  })
+}
+
 onMounted(() => {
-  // 加载课程详情数据
+  loadCourseDetail()
+  loadReviews()
+  loadChapters()
+  loadRecommendations()
 })
 </script>
 

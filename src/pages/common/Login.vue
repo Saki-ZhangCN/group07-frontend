@@ -100,8 +100,7 @@
                   class="captcha-input"
                 />
                 <div class="captcha-image" @click="refreshCaptcha">
-                  <img v-if="captchaImage" :src="captchaImage" alt="验证码" />
-                  <span v-else class="captcha-text">{{ captchaText }}</span>
+                  <img :src="captchaImage" alt="验证码" />
                 </div>
               </div>
             </el-form-item>
@@ -137,6 +136,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
 import { ElMessage } from 'element-plus'
 import { login } from '../../api/auth.js'
+import { CaptchaGenerator } from '../../utils/captcha.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -146,7 +146,13 @@ const selectedRole = ref('student')
 const loading = ref(false)
 const rememberMe = ref(false)
 const captchaImage = ref('')
-const captchaText = ref('ABCD')
+const captchaText = ref('')
+const captchaGenerator = new CaptchaGenerator({
+  width: 120,
+  height: 40,
+  charCount: 4,
+  fontSize: 28
+})
 
 const loginForm = ref({
   username: '',
@@ -172,21 +178,27 @@ const loginRules = {
     { min: 6, message: '密码长度至少6位', trigger: 'blur' }
   ],
   captcha: [
-    { required: true, message: '请输入验证码', trigger: 'blur' }
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { min: 4, max: 4, message: '验证码长度为4位', trigger: 'blur' }
   ]
 }
 
 function refreshCaptcha() {
-  // 生成随机验证码
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  captchaText.value = Array.from({ length: 4 }, () => 
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join('')
+  const { code, image } = captchaGenerator.generate()
+  captchaText.value = code
+  captchaImage.value = image
 }
 
 async function handleLogin() {
   try {
     await loginFormRef.value.validate()
+    
+    if (loginForm.value.captcha.toLowerCase() !== captchaText.value.toLowerCase()) {
+      ElMessage.error('验证码输入错误，请重新输入')
+      refreshCaptcha()
+      loginForm.value.captcha = ''
+      return
+    }
     
     loading.value = true
     
@@ -386,14 +398,6 @@ refreshCaptcha()
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.captcha-text {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--gray-600);
-  letter-spacing: 4px;
-  font-family: monospace;
 }
 
 .login-options {

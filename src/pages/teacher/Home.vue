@@ -85,7 +85,7 @@
       <div class="courses-grid">
         <div class="course-card" v-for="course in courses" :key="course.id">
           <div class="course-cover">
-            <img :src="course.coverImage" :alt="course.name" />
+            <img :src="courseCoverUrl(course.coverImage)" :alt="course.name" @error="useFallbackCover" />
             <span class="course-status" :class="course.statusClass">
               {{ course.status }}
             </span>
@@ -124,6 +124,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 
 const router = useRouter()
 

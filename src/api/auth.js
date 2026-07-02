@@ -88,13 +88,3 @@ export function resetPassword(data) {
   })
 }
 
-/**
- * 获取验证码
- * @returns {Promise} 验证码图片
- */
-export function getCaptcha() {
-  return request({
-    url: '/auth/captcha',
-    method: 'get'
-  })
-}

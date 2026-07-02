@@ -8,18 +8,21 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
+import { getClassLearningData } from '../../api/analysis.js'
 
 const chartRef = ref(null)
 let chart = null
 
-onMounted(() => {
+onMounted(async () => {
+  const data = await getClassLearningData('C000001')
+  const students = data.students || []
   if (chartRef.value) {
     chart = echarts.init(chartRef.value)
     chart.setOption({
       title: { text: '学员学习进度' },
-      xAxis: { type: 'category', data: ['学员A', '学员B', '学员C', '学员D'] },
+      xAxis: { type: 'category', data: students.map(item => item.studentName) },
       yAxis: { type: 'value', max: 100 },
-      series: [{ type: 'bar', data: [75, 82, 65, 90] }]
+      series: [{ type: 'bar', data: students.map(item => item.progress) }]
     })
   }
 })

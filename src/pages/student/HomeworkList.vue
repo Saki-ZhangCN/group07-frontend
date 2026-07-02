@@ -9,7 +9,7 @@
     </div>
     
     <div class="homework-items">
-      <div class="homework-card" v-for="hw in homeworks" :key="hw.id">
+      <div class="homework-card" v-for="hw in filteredHomeworks" :key="hw.id">
         <div class="hw-header">
           <span class="hw-course">{{ hw.course }}</span>
           <span class="hw-status" :class="hw.statusClass">{{ hw.statusLabel }}</span>
@@ -23,10 +23,10 @@
           <span class="hw-type">{{ hw.type }}</span>
         </div>
         <div class="hw-actions">
-          <el-button type="primary" size="small" v-if="hw.status === 'pending'">
+          <el-button type="primary" size="small" v-if="hw.status === 'pending'" @click="openHomework(hw.id)">
             开始作答
           </el-button>
-          <el-button size="small" v-else>查看结果</el-button>
+          <el-button size="small" v-else @click="openHomework(hw.id)">查看结果</el-button>
         </div>
       </div>
     </div>
@@ -34,42 +34,29 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { getHomeworkList } from '../../api/homework.js'
 
 const statusFilter = ref('')
+const router = useRouter()
+const homeworks = ref([])
+const filteredHomeworks = computed(() => statusFilter.value
+  ? homeworks.value.filter(item => item.status === statusFilter.value)
+  : homeworks.value)
 
-const homeworks = ref([
-  {
-    id: '1',
-    course: 'Java编程基础',
-    title: '第三章课后习题',
-    deadline: '剩余2天',
-    type: '选择题',
-    status: 'pending',
-    statusLabel: '待完成',
-    statusClass: 'pending'
-  },
-  {
-    id: '2',
-    course: 'Python数据分析',
-    title: '数据分析实践报告',
-    deadline: '剩余5天',
-    type: '简答题',
-    status: 'pending',
-    statusLabel: '待完成',
-    statusClass: 'pending'
-  },
-  {
-    id: '3',
-    course: 'Web前端开发',
-    title: 'HTML基础练习',
-    deadline: '已完成',
-    type: '编程题',
-    status: 'completed',
-    statusLabel: '已完成',
-    statusClass: 'completed'
-  }
-])
+onMounted(async () => {
+  const data = await getHomeworkList({ page: 1, size: 100 })
+  homeworks.value = (data.records || []).map(item => ({
+    ...item,
+    course: item.course || item.courseName,
+    type: item.type || `${item.questionCount || 0}道题`,
+    statusLabel: item.status === 'pending' ? '待完成' : item.status === 'graded' ? '已批改' : '已提交',
+    statusClass: item.status === 'pending' ? 'pending' : 'completed'
+  }))
+})
+
+function openHomework(id) { router.push(`/student/homework/${id}`) }
 </script>
 
 <style scoped>

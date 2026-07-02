@@ -17,6 +17,14 @@ export function getHomeworkList(params) {
   })
 }
 
+export function getQuestionBank(params) {
+  return request({
+    url: '/homework/question-bank',
+    method: 'get',
+    params
+  })
+}
+
 /**
  * 获取作业详情
  * @param {string} id - 作业ID

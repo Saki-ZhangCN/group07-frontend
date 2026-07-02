@@ -33,6 +33,9 @@
           <el-icon><Document /></el-icon>
           <span>作业管理</span>
         </el-menu-item>
+        <el-menu-item index="/teacher/exercises/create">
+          <el-icon><EditPen /></el-icon><span>添加习题</span>
+        </el-menu-item>
         <el-menu-item index="/teacher/homework/grade">
           <el-icon><Finished /></el-icon>
           <span>作业批改</span>
@@ -131,6 +134,7 @@ const pageTitle = computed(() => {
     '/teacher/live': '直播管理',
     '/teacher/live/teaching': '直播授课',
     '/teacher/homework': '作业管理',
+    '/teacher/exercises/create': '添加习题',
     '/teacher/homework/grade': '作业批改',
     '/teacher/analysis': '学情分析',
     '/teacher/profile': '个人中心'

@@ -63,11 +63,12 @@
         >
           <template #default="{ row }">
             <div class="course-name-cell">
-              <img :src="row.coverImage" class="course-thumb" />
+              <img :src="courseCoverUrl(row.coverImage)" class="course-thumb" @error="useFallbackCover" />
               <span class="course-name">{{ row.courseName }}</span>
             </div>
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right"><template #default="{row}"><el-button link :type="row.status==='online'?'warning':'success'" @click="togglePublish(row)">{{row.status==='online'?'下架':'上架'}}</el-button></template></el-table-column>
         
         <el-table-column 
           label="课程ID" 
@@ -151,6 +152,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getCourseList } from '../../api/course.js'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
+import { publishCourse, unpublishCourse } from '../../api/admin.js'
 
 const statusFilter = ref('')
 const searchKeyword = ref('')
@@ -236,8 +239,10 @@ function formatTime(time) {
 }
 
 function exportData() {
-  ElMessage.success('数据导出成功')
+  const csv = ['课程ID,课程名称,教师,分类,状态,学生数',...courses.value.map(c=>[c.courseId,c.courseName,c.teacherName,c.category,c.status,c.studentCount||0].map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(','))].join('\n')
+  const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='课程列表.csv';a.click();URL.revokeObjectURL(url);ElMessage.success('数据导出成功')
 }
+async function togglePublish(row){if(row.status==='online')await unpublishCourse(row.courseId);else await publishCourse(row.courseId);ElMessage.success(row.status==='online'?'课程已下架':'课程已上架');await loadCourses()}
 </script>
 
 <style scoped>

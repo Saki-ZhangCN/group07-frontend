@@ -124,9 +124,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../../utils/request.js'
+import { createUser as createUserApi, deleteUser as deleteUserApi, exportUsers, getUserList, updateUser } from '../../api/admin.js'
 
 const roleFilter = ref('')
 const statusFilter = ref('')
@@ -150,8 +150,8 @@ async function loadUsers() {
     if (statusFilter.value) params.status = statusFilter.value === 'normal' ? 1 : 0
     if (searchKeyword.value) params.keyword = searchKeyword.value
     
-    const data = await request({ url: '/users', method: 'get', params })
-    users.value = data.users || []
+    const data = await getUserList(params)
+    users.value = data.records || []
     totalCount.value = data.total || 0
   } catch (error) {
     ElMessage.error('获取用户列表失败')
@@ -194,16 +194,24 @@ function formatTime(time) {
   return time.split('T')[0]
 }
 
-function createUser() {
-  ElMessage.info('打开创建用户对话框')
+async function createUser() {
+  const { value: username } = await ElMessageBox.prompt('请输入学号或工号', '创建用户')
+  const { value: realName } = await ElMessageBox.prompt('请输入姓名', '创建用户')
+  await createUserApi({ username, realName, role: roleFilter.value || 'student' })
+  ElMessage.success('用户已创建，初始密码为账号+123456')
+  await loadUsers()
 }
 
-function editUser(id) {
-  ElMessage.info('打开编辑用户对话框')
+async function editUser(id) {
+  const { value: phone } = await ElMessageBox.prompt('请输入新手机号', '编辑用户')
+  await updateUser(id, { phone })
+  ElMessage.success('用户信息已更新')
+  await loadUsers()
 }
 
 function viewDetail(id) {
-  ElMessage.info('查看用户详情')
+  const user = users.value.find(item => item.userId === id)
+  ElMessageBox.alert(JSON.stringify(user, null, 2), '用户详情')
 }
 
 async function toggleStatus(user) {
@@ -215,7 +223,7 @@ async function toggleStatus(user) {
       type: 'warning'
     })
     const newStatus = user.status === 1 ? 0 : 1
-    await request({ url: `/users/${user.userId}/status`, method: 'put', data: { status: newStatus } })
+    await updateUser(user.userId, { status: newStatus })
     user.status = newStatus
     ElMessage.success(`已${action}该用户`)
   } catch {
@@ -230,6 +238,7 @@ async function deleteUser(user) {
       cancelButtonText: '取消',
       type: 'warning'
     })
+    await deleteUserApi(user.userId)
     ElMessage.success('用户已删除')
     loadUsers()
   } catch {
@@ -237,8 +246,14 @@ async function deleteUser(user) {
   }
 }
 
-function exportData() {
-  ElMessage.success('数据导出成功')
+async function exportData() {
+  const blob = await exportUsers({ role: roleFilter.value, keyword: searchKeyword.value })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'users.csv'
+  link.click()
+  URL.revokeObjectURL(url)
 }
 </script>
 

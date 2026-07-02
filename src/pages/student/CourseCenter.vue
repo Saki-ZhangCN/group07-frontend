@@ -54,7 +54,7 @@
           @click="goToDetail(course.courseId)"
         >
           <div class="course-cover">
-            <img :src="course.coverImage" :alt="course.courseName" />
+            <img :src="courseCoverUrl(course.coverImage)" :alt="course.courseName" @error="useFallbackCover" />
           </div>
           <div class="course-info">
             <div class="course-category">
@@ -110,6 +110,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCourseList, enrollCourse } from '../../api/course.js'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 
 const router = useRouter()
 const route = useRoute()

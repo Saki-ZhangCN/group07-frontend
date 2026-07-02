@@ -23,10 +23,11 @@
         <el-upload 
           class="cover-upload"
           action="/api/upload"
+          :headers="uploadHeaders"
           :show-file-list="false"
           :on-success="handleCoverUpload"
         >
-          <img v-if="form.coverImage" :src="form.coverImage" class="cover-preview" />
+          <img v-if="form.coverImage" :src="courseCoverUrl(form.coverImage)" class="cover-preview" @error="useFallbackCover" />
           <el-button v-else>上传封面</el-button>
         </el-upload>
       </el-form-item>
@@ -61,9 +62,11 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createCourse } from '../../api/course.js'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 
 const router = useRouter()
 const formRef = ref(null)
+const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
 
 const form = reactive({
   courseName: '',
@@ -77,7 +80,11 @@ const form = reactive({
 })
 
 function handleCoverUpload(response) {
-  form.coverImage = response.url
+  if (response.code !== 200) {
+    ElMessage.error(response.message || '封面上传失败')
+    return
+  }
+  form.coverImage = response.data?.url || response.url || ''
 }
 
 async function submitForm() {

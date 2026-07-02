@@ -20,8 +20,8 @@
         </div>
         <div class="wb-question">{{ q.content }}</div>
         <div class="wb-actions">
-          <el-button size="small">查看解析</el-button>
-          <el-button size="small" type="primary">重新练习</el-button>
+          <el-button size="small" @click="showAnalysis(q)">查看解析</el-button>
+          <el-button size="small" type="primary" @click="retry(q)">重新练习</el-button>
         </div>
       </div>
     </div>
@@ -29,22 +29,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getWrongBook, retryWrongQuestion } from '../../api/homework.js'
 
-const wrongQuestions = ref([
-  {
-    id: '1',
-    course: 'Java编程基础',
-    date: '2024-01-10',
-    content: 'Java中多线程的实现方式有哪些？'
-  },
-  {
-    id: '2',
-    course: 'Python数据分析',
-    date: '2024-01-12',
-    content: 'Pandas中DataFrame的常用操作有哪些？'
-  }
-])
+const wrongQuestions = ref([])
+async function load() {
+  wrongQuestions.value = (await getWrongBook()).map(item => ({
+    ...item, course: item.knowledge || '课程练习', date: item.lastWrongTime
+  }))
+}
+function showAnalysis(question) { ElMessageBox.alert(question.analysis || '暂无解析', '题目解析') }
+async function retry(question) {
+  const { value } = await ElMessageBox.prompt('请输入答案', '重新练习')
+  const result = await retryWrongQuestion(question.questionId, { answer: value })
+  ElMessage[result.correct ? 'success' : 'warning'](result.message)
+  await load()
+}
+onMounted(load)
 </script>
 
 <style scoped>

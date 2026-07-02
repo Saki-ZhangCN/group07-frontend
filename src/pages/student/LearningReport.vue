@@ -117,6 +117,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import { getKnowledgeMastery, getLearningReport, getWeakPointRecommendation } from '../../api/analysis.js'
 
 const router = useRouter()
 
@@ -284,7 +285,22 @@ function resizeCharts() {
   barChart?.resize()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const [report, mastery, weakPoints] = await Promise.all([
+    getLearningReport(), getKnowledgeMastery(), getWeakPointRecommendation()
+  ])
+  overview.value = {
+    studyHours: Math.round((report.totalStudyTime || 0) / 60),
+    completedCourses: report.completedCourses || 0,
+    completedHomework: report.activeDays || 0,
+    avgScore: report.averageScore || 0
+  }
+  masteryData.value = (mastery || []).map(item => ({ name: item.knowledge, value: item.mastery }))
+  recommendations.value = (weakPoints || []).map(item => ({
+    id: item.lessonId, name: item.title, course: item.knowledge,
+    courseId: item.courseId, chapterId: item.lessonId
+  }))
+  updateDate.value = new Date().toLocaleString()
   initCharts()
   window.addEventListener('resize', resizeCharts)
 })

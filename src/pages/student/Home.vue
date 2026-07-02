@@ -60,7 +60,7 @@
           @click="goToStudy(course.id)"
         >
           <div class="course-cover">
-            <img :src="course.coverImage" :alt="course.name" />
+            <img :src="courseCoverUrl(course.coverImage)" :alt="course.name" @error="useFallbackCover" />
             <div class="course-overlay">
               <el-button type="primary" size="large" circle>
                 <el-icon :size="24"><VideoPlay /></el-icon>
@@ -138,7 +138,7 @@
           @click="goToDetail(course.id)"
         >
           <div class="course-cover">
-            <img :src="course.coverImage" :alt="course.name" />
+            <img :src="courseCoverUrl(course.coverImage)" :alt="course.name" @error="useFallbackCover" />
             <span class="badge badge-live" v-if="course.isLive">
               <span class="live-dot"></span>
               直播中
@@ -167,6 +167,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 
 const router = useRouter()
 

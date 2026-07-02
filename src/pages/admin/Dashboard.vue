@@ -109,11 +109,11 @@
           <div class="warning-list">
             <div class="warning-item" v-for="item in warningStudents" :key="item.id">
               <div class="warning-info">
-                <span class="warning-name">{{ item.name }}</span>
-                <span class="warning-course">{{ item.course }}</span>
+                <span class="warning-name">{{ item.realName }}</span>
+                <span class="warning-course">{{ item.reason }}</span>
               </div>
               <div class="warning-status">
-                <span class="warning-days">停学{{ item.days }}天</span>
+                <span class="warning-days">{{ item.status }}</span>
                 <el-button size="small" type="danger" @click="handleWarning(item)">
                   处理
                 </el-button>
@@ -130,6 +130,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { Top } from '@element-plus/icons-vue'
+import { getActivityTrend, getCompletionRate, getCourseRanking, getDashboardStats, getWarningUsers } from '../../api/dashboard.js'
 
 const timeRange = ref('week')
 
@@ -161,6 +162,8 @@ const pieChartRef = ref(null)
 
 let lineChart = null
 let pieChart = null
+let activityData = { dates: [], values: [] }
+let completionData = { dates: [], values: [] }
 
 function handleWarning(item) {
   // 处理预警学员
@@ -170,30 +173,24 @@ function initCharts() {
   // 折线图
   if (lineChartRef.value) {
     lineChart = echarts.init(lineChartRef.value)
-    const weekData = {
-      xAxisData: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-      login: [1500, 1200, 1800, 1600, 2000, 3000, 2800],
-      study: [800, 600, 900, 700, 1000, 1500, 1400]
-    }
-    
     lineChart.setOption({
       tooltip: { trigger: 'axis' },
       legend: { data: ['登录人数', '学习人数'] },
-      xAxis: { type: 'category', data: weekData.xAxisData },
+      xAxis: { type: 'category', data: activityData.dates },
       yAxis: { type: 'value' },
       series: [
         {
           name: '登录人数',
           type: 'line',
           smooth: true,
-          data: weekData.login,
+          data: activityData.values,
           lineStyle: { color: '#6366F1' }
         },
         {
           name: '学习人数',
           type: 'line',
           smooth: true,
-          data: weekData.study,
+          data: completionData.values,
           lineStyle: { color: '#14B8A6' }
         }
       ]
@@ -216,17 +213,21 @@ function initCharts() {
           borderWidth: 2
         },
         label: { show: false },
-        data: [
-          { value: 35, name: '高完课率(>80%)', itemStyle: { color: '#22C55E' } },
-          { value: 45, name: '中等(50-80%)', itemStyle: { color: '#6366F1' } },
-          { value: 20, name: '低完课率(<50%)', itemStyle: { color: '#F97316' } }
-        ]
+        data: [{ value: Number(stats.value.completionRate||0), name: '已完成', itemStyle:{color:'#22C55E'} },{ value: Math.max(0,100-Number(stats.value.completionRate||0)), name:'未完成',itemStyle:{color:'#F97316'} }]
       }]
     })
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const [summary, ranking, warnings, activity, completion] = await Promise.all([
+    getDashboardStats(), getCourseRanking({}), getWarningUsers({ page: 1, size: 5 }), getActivityTrend({}), getCompletionRate({})
+  ])
+  stats.value = { ...stats.value, ...summary, activeStudents: summary.activeUsers, avgRating: Number(summary.averageScore||0).toFixed(1) }
+  activityData = activity || activityData
+  completionData = completion || completionData
+  courseRanking.value = ranking || []
+  warningStudents.value = warnings.records || []
   initCharts()
   window.addEventListener('resize', () => {
     lineChart?.resize()

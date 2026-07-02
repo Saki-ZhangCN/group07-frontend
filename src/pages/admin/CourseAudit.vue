@@ -21,7 +21,7 @@
     <div class="audit-list">
       <div class="audit-item" v-for="course in courses" :key="course.courseId">
         <div class="course-preview">
-          <img :src="course.coverImage" :alt="course.courseName" class="course-cover" />
+          <img :src="courseCoverUrl(course.coverImage)" :alt="course.courseName" class="course-cover" @error="useFallbackCover" />
           <div class="course-info">
             <div class="course-header">
               <span class="course-name">{{ course.courseName }}</span>
@@ -91,6 +91,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
+import { auditCourse, getPendingCourses } from '../../api/admin.js'
 
 const statusFilter = ref('pending')
 const searchKeyword = ref('')
@@ -105,13 +107,9 @@ onMounted(() => {
 
 async function loadCourses() {
   try {
-    const response = await fetch(`/api/courses/pending-review?page=${currentPage.value}&size=${pageSize.value}&status=${statusFilter.value}`).then(res => res.json())
-    if (response.code === 200) {
-      courses.value = response.data.courses || []
-      totalCount.value = response.data.total || 0
-    } else {
-      ElMessage.error('获取课程列表失败')
-    }
+    const data = await getPendingCourses({ page: currentPage.value, size: pageSize.value, status: statusFilter.value, keyword: searchKeyword.value || undefined })
+    courses.value = data.records || []
+    totalCount.value = data.total || 0
   } catch (error) {
     ElMessage.error('获取课程列表失败')
     console.error(error)
@@ -155,24 +153,9 @@ async function approveCourse(course) {
       type: 'success'
     })
     
-    const response = await fetch('/api/courses/review', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        courseId: course.courseId,
-        status: 'online',
-        reviewComment: '审核通过'
-      })
-    }).then(res => res.json())
-    
-    if (response.code === 200) {
-      ElMessage.success('课程审核通过')
-      loadCourses()
-    } else {
-      ElMessage.error(response.message || '审核失败')
-    }
+    await auditCourse(course.courseId, { result: 'approved', remark: '审核通过' })
+    ElMessage.success('课程审核通过')
+    await loadCourses()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('审核失败')
@@ -193,24 +176,9 @@ async function rejectCourse(course) {
       return
     }
     
-    const response = await fetch('/api/courses/review', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        courseId: course.courseId,
-        status: 'rejected',
-        reviewComment: value
-      })
-    }).then(res => res.json())
-    
-    if (response.code === 200) {
-      ElMessage.success('课程已拒绝')
-      loadCourses()
-    } else {
-      ElMessage.error(response.message || '拒绝失败')
-    }
+    await auditCourse(course.courseId, { result: 'rejected', reason: value })
+    ElMessage.success('课程已拒绝')
+    await loadCourses()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('拒绝失败')

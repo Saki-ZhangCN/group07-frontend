@@ -24,7 +24,7 @@
               <el-empty description="暂无已通过的课程" />
             </div>
             <div v-for="course in approvedCourses" :key="course.courseId" class="course-card">
-              <img :src="course.coverImage" class="card-cover" />
+              <img :src="courseCoverUrl(course.coverImage)" class="card-cover" @error="useFallbackCover" />
               <div class="card-content">
                 <div class="card-header">
                   <span class="card-title">{{ course.courseName }}</span>
@@ -47,7 +47,7 @@
               <el-empty description="暂无正在审核的课程" />
             </div>
             <div v-for="course in reviewingCourses" :key="course.courseId" class="course-card">
-              <img :src="course.coverImage" class="card-cover" />
+              <img :src="courseCoverUrl(course.coverImage)" class="card-cover" @error="useFallbackCover" />
               <div class="card-content">
                 <div class="card-header">
                   <span class="card-title">{{ course.courseName }}</span>
@@ -69,7 +69,7 @@
               <el-empty description="暂无草稿课程" />
             </div>
             <div v-for="course in draftCourses" :key="course.courseId" class="course-card">
-              <img :src="course.coverImage" class="card-cover" />
+              <img :src="courseCoverUrl(course.coverImage)" class="card-cover" @error="useFallbackCover" />
               <div class="card-content">
                 <div class="card-header">
                   <span class="card-title">{{ course.courseName }}</span>
@@ -93,7 +93,7 @@
               <el-empty description="暂无未通过的课程" />
             </div>
             <div v-for="course in rejectedCourses" :key="course.courseId" class="course-card">
-              <img :src="course.coverImage" class="card-cover" />
+              <img :src="courseCoverUrl(course.coverImage)" class="card-cover" @error="useFallbackCover" />
               <div class="card-content">
                 <div class="card-header">
                   <span class="card-title">{{ course.courseName }}</span>
@@ -129,6 +129,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherCourses, deleteCourse as deleteCourseApi, submitCourseForReview } from '../../api/course.js'
+import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 
 const router = useRouter()
 
