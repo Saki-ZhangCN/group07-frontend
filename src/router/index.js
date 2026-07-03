@@ -26,6 +26,7 @@ const routes = [
       { path: 'my-courses', name: 'MyCourses', component: () => import('../pages/student/MyCourses.vue') },
       { path: 'course/:id', name: 'CourseDetail', component: () => import('../pages/student/CourseDetail.vue') },
       { path: 'study/:courseId', name: 'CourseStudy', component: () => import('../pages/student/CourseStudy.vue') },
+      { path: 'live', name: 'StudentLiveList', component: () => import('../pages/student/LiveList.vue') },
       { path: 'live/:roomId', name: 'LiveRoom', component: () => import('../pages/student/LiveRoom.vue') },
       { path: 'homework', name: 'HomeworkList', component: () => import('../pages/student/HomeworkList.vue') },
       { path: 'homework/:id', name: 'HomeworkDetail', component: () => import('../pages/student/HomeworkDetail.vue') },

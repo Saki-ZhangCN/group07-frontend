@@ -1,0 +1,1 @@
+import{t as e}from"./request-CPOQJCpp.js";function t(t){return e({url:`/auth/login`,method:`post`,data:t})}function n(){return e({url:`/auth/profile`,method:`get`})}function r(t){return e({url:`/auth/profile`,method:`put`,data:t})}export{t as n,r,n as t};

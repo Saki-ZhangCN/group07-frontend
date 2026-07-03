@@ -29,6 +29,7 @@
           <el-icon><Document /></el-icon>
           <span>我的作业</span>
         </el-menu-item>
+        <el-menu-item index="/student/live"><el-icon><VideoCamera /></el-icon><span>直播课堂</span></el-menu-item>
         <el-menu-item index="/student/exercises">
           <el-icon><Edit /></el-icon>
           <span>习题练习</span>

@@ -1,0 +1,1 @@
+import{t as e}from"./request-CPOQJCpp.js";function t(){return e({url:`/analysis/report`,method:`get`})}function n(t){return e({url:`/analysis/class/${t}`,method:`get`})}function r(t){return e({url:`/analysis/report-study-duration`,method:`post`,data:t})}export{t as n,r,n as t};

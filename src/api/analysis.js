@@ -112,3 +112,21 @@ export function uploadOfflineScore(data) {
     data
   })
 }
+
+/**
+ * 上报学习时长（视频观看或PDF阅读）
+ * @param {Object} data - 时长数据
+ * @param {string} data.courseId - 课程ID
+ * @param {string} [data.chapterId] - 章节ID
+ * @param {string} data.resourceType - 资源类型（video/pdf）
+ * @param {string} [data.resourceId] - 资源ID
+ * @param {number} data.duration - 学习时长（秒）
+ * @returns {Promise} 上报结果
+ */
+export function reportStudyDuration(data) {
+  return request({
+    url: '/analysis/report-study-duration',
+    method: 'post',
+    data
+  })
+}

@@ -1,0 +1,1 @@
+import{T as e,h as t,v as n}from"./index-C6_6qVS-.js";import{t as r}from"./_plugin-vue_export-helper-BDNMzG2s.js";var i={},a={class:`teacher-dashboard`};function o(r,i){return e(),n(`div`,a,[...i[0]||=[t(`h1`,null,`讲师工作台`,-1),t(`p`,null,`讲师工作台首页内容`,-1)]])}var s=r(i,[[`render`,o],[`__scopeId`,`data-v-b195725f`]]);export{s as default};

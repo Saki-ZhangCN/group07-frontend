@@ -187,10 +187,11 @@ export function submitCourseForReview(id) {
  * 获取讲师的课程列表
  * @returns {Promise} 课程列表
  */
-export function getTeacherCourses() {
+export function getTeacherCourses(params) {
   return request({
     url: '/courses/teacher',
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 

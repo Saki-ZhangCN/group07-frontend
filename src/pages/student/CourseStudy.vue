@@ -67,7 +67,8 @@
         </div>
         
         <div v-if="kind === 'video'" class="video-player-wrapper">
-          <video :src="current.url" controls class="video-player">
+          <video ref="videoPlayerRef" :src="current.url" controls class="video-player"
+            @play="onVideoPlay" @pause="onVideoPause" @ended="onVideoEnded">
             您的浏览器不支持视频播放
           </video>
         </div>
@@ -208,10 +209,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getStudentContent } from '../../api/courseContent.js'
 import { getCourseComments, addCourseComment, likeComment } from '../../api/course.js'
+import { reportStudyDuration } from '../../api/analysis.js'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
@@ -240,6 +242,112 @@ const newComment = ref('')
 const replyingTo = ref('')
 const replyContent = ref('')
 
+// 学习时长追踪
+const studyAccumulatedSeconds = ref(0)
+const studyTimer = ref(null)
+const studyReportTimer = ref(null)
+const currentChapterId = ref('')
+const currentResourceId = ref('')
+const videoPlayerRef = ref(null)
+const isVideoPlaying = ref(false)
+const isPageVisible = ref(true)
+
+function getChapterId() {
+  if (!current.value) return ''
+  const sectionsVal = sections.value
+  for (const section of sectionsVal) {
+    for (const lesson of (section.lessons || [])) {
+      const allResources = [
+        ...(lesson.videos || []).map(v => ({ ...v, kind: 'video' })),
+        ...(lesson.materials || []).map(m => ({ ...m, kind: 'material' }))
+      ]
+      for (const r of allResources) {
+        if (r.id === current.value.id && r.kind === kind.value) {
+          return lesson.chapterId || ''
+        }
+      }
+    }
+  }
+  return ''
+}
+
+function startStudyTracking() {
+  stopStudyTracking()
+  studyAccumulatedSeconds.value = 0
+  currentChapterId.value = getChapterId()
+  currentResourceId.value = current.value?.id || ''
+  
+  studyTimer.value = setInterval(() => {
+    if (kind.value === 'video') {
+      if (isVideoPlaying.value && isPageVisible.value) {
+        studyAccumulatedSeconds.value++
+      }
+    } else if (kind.value === 'pdf') {
+      if (isPageVisible.value) {
+        studyAccumulatedSeconds.value++
+      }
+    }
+  }, 1000)
+  
+  studyReportTimer.value = setInterval(() => {
+    if (studyAccumulatedSeconds.value >= 30) {
+      reportTime()
+    }
+  }, 30000)
+}
+
+function stopStudyTracking() {
+  if (studyTimer.value) {
+    clearInterval(studyTimer.value)
+    studyTimer.value = null
+  }
+  if (studyReportTimer.value) {
+    clearInterval(studyReportTimer.value)
+    studyReportTimer.value = null
+  }
+}
+
+async function reportTime() {
+  if (studyAccumulatedSeconds.value < 5) return
+  const seconds = studyAccumulatedSeconds.value
+  studyAccumulatedSeconds.value = 0
+  
+  try {
+    await reportStudyDuration({
+      courseId: route.params.courseId,
+      chapterId: currentChapterId.value || undefined,
+      resourceType: kind.value, // 'video' 或 'pdf'
+      resourceId: currentResourceId.value || undefined,
+      duration: seconds
+    })
+    console.log(`学习时长已上报: ${seconds}秒, 类型: ${kind.value}`)
+  } catch (error) {
+    console.error('学习时长上报失败:', error)
+    studyAccumulatedSeconds.value += seconds
+  }
+}
+
+function onVideoPlay() {
+  isVideoPlaying.value = true
+}
+
+function onVideoPause() {
+  isVideoPlaying.value = false
+}
+
+function onVideoEnded() {
+  isVideoPlaying.value = false
+  reportTime()
+}
+
+function onVisibilityChange() {
+  isPageVisible.value = !document.hidden
+}
+
+function handleBeforeUnload() {
+  reportTime()
+}
+
 function toggleSection(sectionId) {
   const index = expandedSections.value.indexOf(sectionId)
   if (index > -1) {
@@ -250,11 +358,13 @@ function toggleSection(sectionId) {
 }
 
 function select(s, l, r, k) {
+  reportTime()
   current.value = { ...r, sectionName: s.sectionName, chapterName: l.chapterName }
   kind.value = k
   if (!expandedSections.value.includes(s.sectionId)) {
     expandedSections.value.push(s.sectionId)
   }
+  setTimeout(() => startStudyTracking(), 100)
 }
 
 function findResourceIndex() {
@@ -416,6 +526,16 @@ onMounted(async () => {
   }
   
   overallProgress.value = totalResources > 0 ? Math.round((completedResources / totalResources) * 100) : 0
+  
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onBeforeUnmount(() => {
+  stopStudyTracking()
+  reportTime()
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 
