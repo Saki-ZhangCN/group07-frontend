@@ -42,7 +42,6 @@
           <el-option label="最新发布" value="latest" />
           <el-option label="评分最高" value="rating" />
           <el-option label="学习人数" value="students" />
-          <el-option label="价格最低" value="price" />
         </el-select>
       </div>
       
@@ -72,10 +71,6 @@
               </span>
             </div>
             <div class="course-footer">
-              <div class="course-price">
-                <span class="price-current" v-if="course.price > 0">¥{{ course.price }}</span>
-                <span class="price-free" v-else>免费</span>
-              </div>
               <el-button type="primary" size="small" @click.stop="handleEnroll(course)">
                 选课
               </el-button>
@@ -311,18 +306,6 @@ async function handleEnroll(course) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.price-current {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--accent-orange);
-}
-
-.price-free {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--green-500);
 }
 
 .pagination-section {

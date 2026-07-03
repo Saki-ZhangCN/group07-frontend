@@ -40,6 +40,7 @@
           <el-icon><Edit /></el-icon>
           <span>题库管理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/content-audit"><el-icon><VideoPlay /></el-icon><span>教学资源审核</span></el-menu-item>
         <el-menu-item index="/admin/announcements">
           <el-icon><ChatDotRound /></el-icon>
           <span>公告管理</span>
@@ -126,6 +127,7 @@ const pageTitle = computed(() => {
     '/admin/courses': '课程审核',
     '/admin/courses/list': '课程列表',
     '/admin/exams': '题库管理',
+    '/admin/content-audit': '教学资源审核',
     '/admin/announcements': '公告管理',
     '/admin/statistics': '统计分析',
     '/admin/system': '系统配置'

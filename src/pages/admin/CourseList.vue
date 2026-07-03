@@ -122,14 +122,6 @@
           sortable="custom"
         />
         
-        <el-table-column 
-          label="价格" 
-          width="100" 
-          prop="price"
-          sortable="custom"
-        >
-          <template #default="{ row }">¥{{ row.price || 0 }}</template>
-        </el-table-column>
       </el-table>
     </div>
     

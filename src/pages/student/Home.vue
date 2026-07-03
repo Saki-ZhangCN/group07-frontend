@@ -49,18 +49,18 @@
     <section class="section">
       <div class="section-header">
         <h2 class="section-title">继续学习</h2>
-        <router-link to="/student/courses" class="section-link">查看全部</router-link>
+        <router-link to="/student/my-courses" class="section-link">查看全部</router-link>
       </div>
       
       <div class="courses-grid" v-if="ongoingCourses.length">
         <div 
           class="course-card" 
           v-for="course in ongoingCourses" 
-          :key="course.id"
-          @click="goToStudy(course.id)"
+          :key="course.courseId"
+          @click="goToStudy(course.courseId)"
         >
           <div class="course-cover">
-            <img :src="courseCoverUrl(course.coverImage)" :alt="course.name" @error="useFallbackCover" />
+            <img :src="courseCoverUrl(course.coverImage)" :alt="course.courseName" @error="useFallbackCover" />
             <div class="course-overlay">
               <el-button type="primary" size="large" circle>
                 <el-icon :size="24"><VideoPlay /></el-icon>
@@ -68,13 +68,13 @@
             </div>
           </div>
           <div class="course-info">
-            <h3 class="course-name">{{ course.name }}</h3>
-            <p class="course-teacher">{{ course.teacher }}</p>
+            <h3 class="course-name">{{ course.courseName }}</h3>
+            <p class="course-teacher">{{ course.teacherName }}</p>
             <div class="course-progress">
               <div class="progress">
-                <div class="progress-bar" :style="{ width: course.progress + '%' }"></div>
+                <div class="progress-bar" :style="{ width: (course.progress || 0) + '%' }"></div>
               </div>
-              <span class="progress-text">已学 {{ course.progress }}%</span>
+              <span class="progress-text">已学 {{ course.progress || 0 }}%</span>
             </div>
           </div>
         </div>
@@ -97,10 +97,10 @@
       </div>
       
       <div class="homework-list" v-if="pendingHomework.length">
-        <div class="homework-item" v-for="hw in pendingHomework" :key="hw.id">
+        <div class="homework-item" v-for="hw in pendingHomework" :key="hw.homeworkId || hw.id">
           <div class="homework-info">
             <div class="homework-badge">
-              <span class="badge badge-warning">{{ hw.type }}</span>
+              <span class="badge badge-warning">{{ hw.type || '作业' }}</span>
             </div>
             <h4 class="homework-title">{{ hw.title }}</h4>
             <p class="homework-course">{{ hw.courseName }}</p>
@@ -108,9 +108,9 @@
           <div class="homework-meta">
             <div class="homework-deadline">
               <el-icon><Clock /></el-icon>
-              <span>{{ hw.deadline }}</span>
+              <span>{{ formatDate(hw.deadline) || '暂无截止时间' }}</span>
             </div>
-            <el-button type="primary" size="small" @click="goToHomework(hw.id)">
+            <el-button type="primary" size="small" @click="goToHomework(hw.homeworkId || hw.id)">
               开始作答
             </el-button>
           </div>
@@ -134,27 +134,27 @@
         <div 
           class="course-card" 
           v-for="course in recommendedCourses" 
-          :key="course.id"
-          @click="goToDetail(course.id)"
+          :key="course.courseId"
+          @click="goToDetail(course.courseId)"
         >
           <div class="course-cover">
-            <img :src="courseCoverUrl(course.coverImage)" :alt="course.name" @error="useFallbackCover" />
-            <span class="badge badge-live" v-if="course.isLive">
+            <img :src="courseCoverUrl(course.coverImage)" :alt="course.courseName" @error="useFallbackCover" />
+            <span class="badge badge-live" v-if="course.status === 'live'">
               <span class="live-dot"></span>
               直播中
             </span>
           </div>
           <div class="course-info">
-            <h3 class="course-name">{{ course.name }}</h3>
-            <p class="course-teacher">{{ course.teacher }}</p>
+            <h3 class="course-name">{{ course.courseName }}</h3>
+            <p class="course-teacher">{{ course.teacherName }}</p>
             <div class="course-meta">
               <span class="course-rating">
                 <el-icon><Star /></el-icon>
-                {{ course.rating }}
+                {{ course.rating || '暂无评分' }}
               </span>
               <span class="course-students">
                 <el-icon><User /></el-icon>
-                {{ course.students }}人学习
+                {{ course.studentCount }}人学习
               </span>
             </div>
           </div>
@@ -167,87 +167,66 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
+import { formatDate } from '../../utils/date.js'
+import { getEnrolledCourses, getCourseList } from '../../api/course.js'
+import { getHomeworkList } from '../../api/homework.js'
 
 const router = useRouter()
 
 const stats = ref({
-  enrolledCourses: 5,
-  studyHours: 24,
-  completedHomework: 12,
-  avgScore: 85
+  enrolledCourses: 0,
+  studyHours: 0,
+  completedHomework: 0,
+  avgScore: 0
 })
 
-const ongoingCourses = ref([
-  {
-    id: '1',
-    name: 'Java编程基础',
-    teacher: '王老师',
-    coverImage: 'https://picsum.photos/seed/java/400/225',
-    progress: 60
-  },
-  {
-    id: '2',
-    name: 'Python数据分析',
-    teacher: '李老师',
-    coverImage: 'https://picsum.photos/seed/python/400/225',
-    progress: 35
-  },
-  {
-    id: '3',
-    name: 'Web前端开发',
-    teacher: '张老师',
-    coverImage: 'https://picsum.photos/seed/web/400/225',
-    progress: 80
-  }
-])
+const ongoingCourses = ref([])
+const pendingHomework = ref([])
+const recommendedCourses = ref([])
 
-const pendingHomework = ref([
-  {
-    id: '1',
-    title: '第三章课后习题',
-    courseName: 'Java编程基础',
-    type: '选择题',
-    deadline: '剩余2天'
-  },
-  {
-    id: '2',
-    title: '数据分析实践报告',
-    courseName: 'Python数据分析',
-    type: '简答题',
-    deadline: '剩余5天'
+async function loadStats() {
+  try {
+    const coursesResponse = await getEnrolledCourses()
+    const courses = coursesResponse.data || coursesResponse
+    stats.value.enrolledCourses = courses.length
+    
+    const homeworkResponse = await getHomeworkList({ page: 1, size: 100, status: 'pending' })
+    const homeworkData = homeworkResponse.data || homeworkResponse
+    const homeworkList = homeworkData.records || homeworkData.list || homeworkData
+    stats.value.completedHomework = homeworkList.filter(hw => hw.status === 'completed').length
+    pendingHomework.value = homeworkList.filter(hw => hw.status !== 'completed').slice(0, 5)
+  } catch (error) {
+    console.error('加载统计数据失败', error)
   }
-])
+}
 
-const recommendedCourses = ref([
-  {
-    id: '4',
-    name: '数据库原理与应用',
-    teacher: '陈老师',
-    coverImage: 'https://picsum.photos/seed/db/400/225',
-    rating: 4.8,
-    students: 1256,
-    isLive: false
-  },
-  {
-    id: '5',
-    name: '软件工程导论',
-    teacher: '刘老师',
-    coverImage: 'https://picsum.photos/seed/se/400/225',
-    rating: 4.6,
-    students: 832,
-    isLive: true
-  },
-  {
-    id: '6',
-    name: '算法设计与分析',
-    teacher: '赵老师',
-    coverImage: 'https://picsum.photos/seed/algo/400/225',
-    rating: 4.9,
-    students: 2150,
-    isLive: false
+async function loadOngoingCourses() {
+  try {
+    const response = await getEnrolledCourses()
+    const courses = response.data || response
+    ongoingCourses.value = courses.slice(0, 3)
+  } catch (error) {
+    ElMessage.error('获取已选课程失败')
+    console.error(error)
   }
-])
+}
+
+async function loadRecommendedCourses() {
+  try {
+    const response = await getCourseList({ page: 1, size: 6, status: 'online' })
+    const data = response.data || response
+    const courses = data.courses || data.records || data.list || data
+    if (Array.isArray(courses)) {
+      recommendedCourses.value = courses.slice(0, 3)
+    } else if (Array.isArray(data)) {
+      recommendedCourses.value = data.slice(0, 3)
+    }
+  } catch (error) {
+    console.error('获取推荐课程失败', error)
+  }
+}
 
 function goToStudy(courseId) {
   router.push(`/student/study/${courseId}`)
@@ -262,7 +241,9 @@ function goToHomework(hwId) {
 }
 
 onMounted(() => {
-  // 加载首页数据
+  loadStats()
+  loadOngoingCourses()
+  loadRecommendedCourses()
 })
 </script>
 

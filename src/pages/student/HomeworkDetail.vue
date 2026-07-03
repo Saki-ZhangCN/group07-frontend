@@ -3,7 +3,7 @@
     <h1 class="hw-title">{{ homework.title }}</h1>
     <div class="hw-info">
       <span class="hw-course">{{ homework.course }}</span>
-      <span class="hw-deadline">截止时间：{{ homework.deadline }}</span>
+      <span class="hw-deadline">截止时间：{{ formatDate(homework.deadline) }}</span>
       <span class="hw-score">总分：{{ homework.totalScore }}分</span>
     </div>
 
@@ -89,6 +89,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getHomeworkDetail, getHomeworkResult, submitHomework } from '../../api/homework.js'
+import { formatDate } from '../../utils/date.js'
 
 const answers = ref({})
 const route = useRoute()

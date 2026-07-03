@@ -37,6 +37,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getHomeworkList } from '../../api/homework.js'
+import { formatDate } from '../../utils/date.js'
 
 const statusFilter = ref('')
 const router = useRouter()
@@ -51,6 +52,7 @@ onMounted(async () => {
     ...item,
     course: item.course || item.courseName,
     type: item.type || `${item.questionCount || 0}道题`,
+    deadline: formatDate(item.deadline),
     statusLabel: item.status === 'pending' ? '待完成' : item.status === 'graded' ? '已批改' : '已提交',
     statusClass: item.status === 'pending' ? 'pending' : 'completed'
   }))

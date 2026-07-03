@@ -1,0 +1,12 @@
+import request from '../utils/request.js'
+export const getTeacherChapters = id => request({url:`/course-content/teacher/${id}`,method:'get'})
+export const createSection = (id,data) => request({url:`/course-content/teacher/${id}/sections`,method:'post',data})
+export const createLesson = (id,data) => request({url:`/course-content/teacher/sections/${id}/lessons`,method:'post',data})
+export const deleteSection = id => request({url:`/course-content/teacher/sections/${id}`,method:'delete'})
+export const updateSection = (id,data) => request({url:`/course-content/teacher/sections/${id}`,method:'put',data})
+export const updateLesson = (id,data) => request({url:`/course-content/teacher/chapters/${id}`,method:'put',data})
+export const withdrawResource = (kind,id) => request({url:`/course-content/teacher/resources/${kind}/${id}`,method:'delete'})
+export const deleteChapter = id => request({url:`/course-content/teacher/chapters/${id}`,method:'delete'})
+export const getStudentContent = id => request({url:`/course-content/student/${id}`,method:'get'})
+export const getPendingResources = () => request({url:'/course-content/admin/pending',method:'get'})
+export const reviewResource = (kind,id,data) => request({url:`/course-content/admin/${kind}/${id}/review`,method:'post',data})

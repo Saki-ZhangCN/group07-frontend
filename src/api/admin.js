@@ -84,6 +84,18 @@ export function getPendingCourses(params) {
 }
 
 /**
+ * 获取课程详情
+ * @param {string} courseId - 课程ID
+ * @returns {Promise} 课程详情
+ */
+export function getCourseDetail(courseId) {
+  return request({
+    url: `/courses/${courseId}`,
+    method: 'get'
+  })
+}
+
+/**
  * 审核课程
  * @param {string} courseId - 课程ID
  * @param {Object} data - 审核数据

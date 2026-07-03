@@ -13,7 +13,7 @@
         </div>
         <p class="course-name">{{ hw.course }}</p>
         <div class="card-meta">
-          <span><el-icon><Clock /></el-icon> {{ hw.deadline }}</span>
+          <span><el-icon><Clock /></el-icon> {{ formatDate(hw.deadline) }}</span>
           <span><el-icon><Document /></el-icon> {{ hw.questionCount }}道题</span>
           <span><el-icon><Score /></el-icon> {{ hw.totalScore }}分</span>
         </div>
@@ -88,6 +88,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createHomework, deleteHomework, getHomeworkList, getHomeworkStats, getQuestionBank, updateHomework } from '../../api/homework.js'
 import { getTeacherCourses } from '../../api/course.js'
+import { formatDate } from '../../utils/date.js'
 
 const homeworks = ref([])
 const courses = ref([])

@@ -32,27 +32,17 @@
         </el-upload>
       </el-form-item>
       
-      <el-form-item label="课程价格">
-        <el-input-number v-model="form.price" :min="0" :precision="2" placeholder="免费课程请输入0" />
-      </el-form-item>
-      
       <el-form-item label="总课时">
         <el-input-number v-model="form.totalHours" :min="1" placeholder="请输入总课时" />
       </el-form-item>
-      
-      <el-form-item label="教学大纲">
-        <el-input v-model="form.syllabus" type="textarea" :rows="6" placeholder="请输入教学大纲" />
-      </el-form-item>
-      
-      <el-form-item label="考核方式">
-        <el-input v-model="form.assessmentMethod" type="textarea" :rows="3" placeholder="请输入考核方式" />
-      </el-form-item>
-
-      <el-form-item>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
-        <el-button @click="goBack">取消</el-button>
-      </el-form-item>
     </el-form>
+    <ChapterManager :course-id="courseId" />
+    
+    <div class="action-buttons">
+      <el-button @click="saveAsDraft" :loading="saving">保存为草稿</el-button>
+      <el-button type="primary" @click="submitForReview" :loading="saving">提交审核</el-button>
+      <el-button @click="goBack">取消</el-button>
+    </div>
   </div>
 </template>
 
@@ -62,6 +52,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCourseDetail, updateCourse } from '../../api/course.js'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
+import ChapterManager from '../../components/ChapterManager.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -75,7 +66,6 @@ const form = reactive({
   category: '',
   description: '',
   coverImage: '',
-  price: 0,
   totalHours: 0,
   syllabus: '',
   assessmentMethod: ''
@@ -92,7 +82,6 @@ async function loadCourseDetail() {
     form.category = course.category || ''
     form.description = course.description || ''
     form.coverImage = course.coverImage || ''
-    form.price = course.price || 0
     form.totalHours = course.totalHours || 0
   } catch (error) {
     ElMessage.error('获取课程详情失败')
@@ -108,7 +97,7 @@ function handleCoverUpload(response) {
   form.coverImage = response.data?.url || response.url || ''
 }
 
-async function handleSave() {
+async function saveAsDraft() {
   if (!form.courseName.trim()) {
     ElMessage.warning('请输入课程名称')
     return
@@ -116,25 +105,46 @@ async function handleSave() {
   
   saving.value = true
   try {
-    const course = await updateCourse(courseId, {
+    await updateCourse(courseId, {
       courseName: form.courseName,
       category: form.category,
       description: form.description,
       coverImage: form.coverImage,
-      price: form.price,
       totalHours: form.totalHours,
       syllabus: form.syllabus,
-      assessmentMethod: form.assessmentMethod
+      assessmentMethod: form.assessmentMethod,
+      status: 'draft'
     })
-    
-    if (course.status === 'pending') {
-      ElMessage.success('课程已更新，编辑后课程需重新审核')
-    } else {
-      ElMessage.success('课程更新成功')
-    }
+    ElMessage.success('课程已保存为草稿')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function submitForReview() {
+  if (!form.courseName.trim()) {
+    ElMessage.warning('请输入课程名称')
+    return
+  }
+  
+  saving.value = true
+  try {
+    await updateCourse(courseId, {
+      courseName: form.courseName,
+      category: form.category,
+      description: form.description,
+      coverImage: form.coverImage,
+      totalHours: form.totalHours,
+      syllabus: form.syllabus,
+      assessmentMethod: form.assessmentMethod,
+      status: 'pending'
+    })
+    ElMessage.success('课程已提交审核，请等待管理员审核')
     router.push('/teacher/courses')
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '更新失败')
+    ElMessage.error(error.response?.data?.message || '提交失败')
   } finally {
     saving.value = false
   }
@@ -167,5 +177,14 @@ function goBack() {
   height: 120px;
   border-radius: var(--radius-lg);
   object-fit: cover;
+}
+
+.action-buttons {
+  margin-top: var(--spacing-xxl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>

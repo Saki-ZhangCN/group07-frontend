@@ -32,24 +32,14 @@
         </el-upload>
       </el-form-item>
       
-      <el-form-item label="课程价格">
-        <el-input-number v-model="form.price" :min="0" :precision="2" placeholder="免费课程请输入0" />
-      </el-form-item>
-      
       <el-form-item label="总课时">
         <el-input-number v-model="form.totalHours" :min="1" placeholder="请输入总课时" />
       </el-form-item>
       
-      <el-form-item label="教学大纲">
-        <el-input v-model="form.syllabus" type="textarea" :rows="6" placeholder="请输入教学大纲" />
-      </el-form-item>
-      
-      <el-form-item label="考核方式">
-        <el-input v-model="form.assessmentMethod" type="textarea" :rows="3" placeholder="请输入考核方式" />
-      </el-form-item>
+      <el-alert title="课程保存后，将进入“课程章节”页面创建每节课并上传视频或PDF资料。" type="info" :closable="false" />
       
       <el-form-item>
-        <el-button type="primary" @click="submitForm">保存并提交审核</el-button>
+        <el-button type="primary" @click="submitForm">创建并管理章节</el-button>
         <el-button @click="saveDraft">保存草稿</el-button>
         <el-button @click="cancelForm">取消</el-button>
       </el-form-item>
@@ -73,7 +63,6 @@ const form = reactive({
   category: '',
   description: '',
   coverImage: '',
-  price: 0,
   totalHours: 0,
   syllabus: '',
   assessmentMethod: ''
@@ -94,18 +83,17 @@ async function submitForm() {
   }
   
   try {
-    await createCourse({
+    const course = await createCourse({
       courseName: form.courseName,
       category: form.category,
       description: form.description,
       coverImage: form.coverImage,
-      price: form.price,
       totalHours: form.totalHours,
       syllabus: form.syllabus,
       assessmentMethod: form.assessmentMethod
     })
-    ElMessage.success('课程创建成功')
-    router.push('/teacher/courses')
+    ElMessage.success('课程基本信息已创建，请继续创建课程章节')
+    router.push(`/teacher/course/edit/${course.courseId}`)
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '创建失败')
   }
@@ -113,18 +101,17 @@ async function submitForm() {
 
 async function saveDraft() {
   try {
-    await createCourse({
+    const course = await createCourse({
       courseName: form.courseName || '未命名课程',
       category: form.category,
       description: form.description,
       coverImage: form.coverImage,
-      price: form.price,
       totalHours: form.totalHours,
       syllabus: form.syllabus,
       assessmentMethod: form.assessmentMethod
     })
     ElMessage.success('草稿保存成功')
-    router.push('/teacher/courses')
+    router.push(`/teacher/course/edit/${course.courseId}`)
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '保存失败')
   }

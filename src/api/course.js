@@ -193,3 +193,67 @@ export function getTeacherCourses() {
     method: 'get'
   })
 }
+
+/**
+ * 获取课程评论列表
+ * @param {string} courseId - 课程ID
+ * @returns {Promise} 评论列表
+ */
+export function getCourseComments(courseId) {
+  return request({
+    url: `/course-comments/${courseId}`,
+    method: 'get'
+  })
+}
+
+/**
+ * 发表课程评论
+ * @param {Object} data - 评论数据
+ * @param {string} data.courseId - 课程ID
+ * @param {string} data.content - 评论内容
+ * @param {string} [data.parentId] - 父评论ID（回复）
+ * @returns {Promise} 发表结果
+ */
+export function addCourseComment(data) {
+  return request({
+    url: '/course-comments',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 点赞评论
+ * @param {string} commentId - 评论ID
+ * @returns {Promise} 点赞结果
+ */
+export function likeComment(commentId) {
+  return request({
+    url: `/course-comments/${commentId}/like`,
+    method: 'post'
+  })
+}
+
+/**
+ * 删除评论
+ * @param {string} commentId - 评论ID
+ * @returns {Promise} 删除结果
+ */
+export function deleteComment(commentId) {
+  return request({
+    url: `/course-comments/${commentId}`,
+    method: 'delete'
+  })
+}
+
+/**
+ * 获取课程评论数量
+ * @param {string} courseId - 课程ID
+ * @returns {Promise} 评论数量
+ */
+export function getCommentCount(courseId) {
+  return request({
+    url: `/course-comments/${courseId}/count`,
+    method: 'get'
+  })
+}

@@ -40,7 +40,6 @@
               </span>
               <span class="stat-item">
                 <el-icon><Coin /></el-icon>
-                ¥{{ course.price }}
               </span>
             </div>
           </div>
@@ -85,6 +84,86 @@
         @current-change="loadCourses"
       />
     </div>
+    
+    <el-dialog v-model="detailVisible" title="课程详情" width="700px" :before-close="closeDetail">
+      <div v-if="detailLoading" class="detail-loading">
+        <el-loading text="加载中..." />
+      </div>
+      <div v-else-if="detailCourse" class="detail-content">
+        <div class="detail-header">
+          <img :src="courseCoverUrl(detailCourse.coverImage)" :alt="detailCourse.courseName" class="detail-cover" @error="useFallbackCover" />
+          <div class="detail-basic">
+            <h2 class="detail-name">{{ detailCourse.courseName }}</h2>
+            <div class="detail-meta">
+              <span class="detail-status" :class="getStatusClass(detailCourse.status)">
+                {{ getStatusLabel(detailCourse.status) }}
+              </span>
+              <span>讲师：{{ detailCourse.teacherName }}</span>
+              <span>职称：{{ detailCourse.teacherTitle || '-' }}</span>
+            </div>
+            <div class="detail-stats">
+              <span>分类：{{ detailCourse.category }}</span>
+              <span>课时：{{ detailCourse.totalHours }}课时</span>
+              <span>学员数：{{ detailCourse.studentCount || 0 }}人</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="detail-section">
+          <h3>课程简介</h3>
+          <p>{{ detailCourse.description || '暂无简介' }}</p>
+        </div>
+        
+        <div class="detail-section">
+          <h3>课程章节</h3>
+          <div v-if="detailCourse.sections && detailCourse.sections.length" class="sections-list">
+            <div v-for="(section, sectionIndex) in detailCourse.sections" :key="section.sectionId" class="section-card">
+              <div class="section-header">
+                <span class="section-order">{{ section.sectionOrder }}</span>
+                <span class="section-name">{{ section.sectionName }}</span>
+                <span class="section-count">{{ section.lessons?.length || 0 }}个小节</span>
+              </div>
+              <div v-if="section.lessons && section.lessons.length" class="lessons-list">
+                <div v-for="(lesson, lessonIndex) in section.lessons" :key="lesson.chapterId" class="lesson-item">
+                  <div class="lesson-info">
+                    <span class="lesson-order">{{ lesson.chapterOrder }}</span>
+                    <span class="lesson-name">{{ lesson.chapterName }}</span>
+                  </div>
+                  <div class="lesson-resources">
+                    <span v-if="lesson.videos && lesson.videos.length" class="resource-tag video-tag">
+                      {{ lesson.videos.length }}个视频
+                    </span>
+                    <span v-if="lesson.materials && lesson.materials.length" class="resource-tag material-tag">
+                      {{ lesson.materials.length }}个资料
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="no-lessons">该章节暂无小节</div>
+            </div>
+          </div>
+          <p v-else class="empty-outline">暂无章节信息</p>
+        </div>
+        
+        <div class="detail-section">
+          <h3>其他信息</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">创建时间</span>
+              <span class="info-value">{{ formatTime(detailCourse.createTime) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">更新时间</span>
+              <span class="info-value">{{ formatTime(detailCourse.updateTime) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">课程评分</span>
+              <span class="info-value">{{ detailCourse.rating || '-' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -92,7 +171,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
-import { auditCourse, getPendingCourses } from '../../api/admin.js'
+import { auditCourse, getPendingCourses, getCourseDetail } from '../../api/admin.js'
 
 const statusFilter = ref('pending')
 const searchKeyword = ref('')
@@ -100,6 +179,10 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const totalCount = ref(0)
 const courses = ref([])
+
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detailCourse = ref(null)
 
 onMounted(() => {
   loadCourses()
@@ -141,8 +224,24 @@ function formatTime(time) {
   return time.split('T')[0]
 }
 
-function viewDetail(id) {
-  ElMessage.info('查看课程详情')
+async function viewDetail(id) {
+  detailVisible.value = true
+  detailLoading.value = true
+  detailCourse.value = null
+  try {
+    const response = await getCourseDetail(id)
+    detailCourse.value = response.data || response
+  } catch (error) {
+    ElMessage.error('获取课程详情失败')
+    console.error(error)
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function closeDetail() {
+  detailVisible.value = false
+  detailCourse.value = null
 }
 
 async function approveCourse(course) {
@@ -363,5 +462,224 @@ async function rejectCourse(course) {
     flex-direction: column;
     gap: var(--spacing-md);
   }
+}
+
+.detail-loading {
+  padding: 40px;
+  text-align: center;
+}
+
+.detail-content {
+  padding: 10px 0;
+}
+
+.detail-header {
+  display: flex;
+  gap: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid #eee;
+}
+
+.detail-cover {
+  width: 180px;
+  height: 108px;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+}
+
+.detail-basic {
+  flex: 1;
+}
+
+.detail-name {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.detail-meta {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+}
+
+.detail-status {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+}
+
+.detail-status.pending {
+  background: rgba(249, 115, 22, 0.1);
+  color: var(--accent-orange);
+}
+
+.detail-status.approved,
+.detail-status.online {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--green-500);
+}
+
+.detail-status.rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red-500);
+}
+
+.detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+}
+
+.detail-section {
+  margin-top: var(--spacing-lg);
+}
+
+.detail-section h3 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-md) 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-section p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+  line-height: 1.6;
+}
+
+.sections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-card {
+  border: 1px solid #f0f0f0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--gray-50);
+}
+
+.section-order {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--primary-500);
+  min-width: 30px;
+}
+
+.section-name {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.section-count {
+  font-size: var(--font-size-xs);
+  color: var(--gray-400);
+  background: white;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.lessons-list {
+  padding: 8px 0;
+}
+
+.lesson-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 8px 48px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.lesson-item:last-child {
+  border-bottom: none;
+}
+
+.lesson-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lesson-order {
+  font-size: var(--font-size-xs);
+  color: var(--gray-400);
+  min-width: 40px;
+}
+
+.lesson-name {
+  font-size: var(--font-size-sm);
+  color: var(--gray-700);
+}
+
+.lesson-resources {
+  display: flex;
+  gap: 8px;
+}
+
+.resource-tag {
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.video-tag {
+  background: rgba(249, 115, 22, 0.1);
+  color: var(--accent-orange);
+}
+
+.material-tag {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--blue-500);
+}
+
+.no-lessons {
+  padding: 16px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: var(--font-size-sm);
+}
+
+.empty-outline {
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: var(--font-size-xs);
+  color: var(--gray-400);
+}
+
+.info-value {
+  font-size: var(--font-size-sm);
+  color: var(--gray-700);
 }
 </style>

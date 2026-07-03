@@ -26,6 +26,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/video': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/Materials': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })
