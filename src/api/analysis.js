@@ -130,3 +130,11 @@ export function reportStudyDuration(data) {
     data
   })
 }
+
+export function getCourseProgress(courseId) {
+  return request({ url: `/analysis/course-progress/${courseId}`, method: 'get' })
+}
+
+export function completeLearningResource(data) {
+  return request({ url: '/analysis/resource-complete', method: 'post', data })
+}

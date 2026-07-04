@@ -14,6 +14,7 @@
           <span class="progress-text">{{ overallProgress }}%</span>
         </div>
         <p class="progress-label">已学</p>
+        <button @click="goToCourseDetail" class="course-detail-btn">课程详情</button>
       </div>
       <div class="chapter-list">
         <div v-for="section in sections" :key="section.sectionId" class="chapter-section">
@@ -28,7 +29,7 @@
               class="lesson-item"
             >
               <div class="lesson-title">
-                <span class="lesson-order">{{ section.sectionOrder }}.{{ lesson.chapterOrder }}</span>
+                <span class="lesson-order">{{ lesson.chapterOrder }}</span>
                 <span class="lesson-name">{{ lesson.chapterName }}</span>
               </div>
               <div class="resource-list">
@@ -68,29 +69,14 @@
         
         <div v-if="kind === 'video'" class="video-player-wrapper">
           <video ref="videoPlayerRef" :src="current.url" controls class="video-player"
+            @loadedmetadata="onVideoLoaded" @timeupdate="onVideoTimeUpdate"
+            @seeking="onVideoSeeking" @seeked="onVideoSeeked"
             @play="onVideoPlay" @pause="onVideoPause" @ended="onVideoEnded">
             您的浏览器不支持视频播放
           </video>
         </div>
         
-        <div v-else class="pdf-viewer-wrapper">
-          <div class="pdf-header">
-            <span class="pdf-title">{{ current.title }}</span>
-            <div class="pdf-actions">
-              <a :href="current.url" download class="download-btn">
-                <el-icon><Download /></el-icon>
-                下载PDF
-              </a>
-              <a :href="current.url" target="_blank" class="open-btn">
-                <el-icon><Link /></el-icon>
-                在新窗口打开
-              </a>
-            </div>
-          </div>
-          <div class="pdf-container">
-            <iframe :src="current.url" title="PDF教学资料" class="pdf-iframe"></iframe>
-          </div>
-        </div>
+        <div v-else class="pdf-viewer-wrapper"><PdfViewer :src="current.url" :title="current.title" /></div>
         
         <div class="content-footer">
           <button v-if="prevResource" @click="selectPrev" class="nav-btn prev-btn">
@@ -210,13 +196,15 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getStudentContent } from '../../api/courseContent.js'
 import { getCourseComments, addCourseComment, likeComment } from '../../api/course.js'
-import { reportStudyDuration } from '../../api/analysis.js'
+import { reportStudyDuration, getCourseProgress, completeLearningResource } from '../../api/analysis.js'
 import { ElMessage } from 'element-plus'
+import PdfViewer from '../../components/PdfViewer.vue'
 
 const route = useRoute()
+const router = useRouter()
 const sections = ref([])
 const current = ref(null)
 const kind = ref('')
@@ -251,6 +239,10 @@ const currentResourceId = ref('')
 const videoPlayerRef = ref(null)
 const isVideoPlaying = ref(false)
 const isPageVisible = ref(true)
+const completedKeys = ref(new Set())
+let watchedSeconds = new Set()
+let lastVideoTime = 0
+let videoSeeking = false
 
 function getChapterId() {
   if (!current.value) return ''
@@ -282,7 +274,7 @@ function startStudyTracking() {
       if (isVideoPlaying.value && isPageVisible.value) {
         studyAccumulatedSeconds.value++
       }
-    } else if (kind.value === 'pdf') {
+    } else if (kind.value === 'material') {
       if (isPageVisible.value) {
         studyAccumulatedSeconds.value++
       }
@@ -316,7 +308,7 @@ async function reportTime() {
     await reportStudyDuration({
       courseId: route.params.courseId,
       chapterId: currentChapterId.value || undefined,
-      resourceType: kind.value, // 'video' 或 'pdf'
+      resourceType: kind.value === 'video' ? 'video' : 'pdf',
       resourceId: currentResourceId.value || undefined,
       duration: seconds
     })
@@ -331,13 +323,72 @@ function onVideoPlay() {
   isVideoPlaying.value = true
 }
 
+function onVideoLoaded() {
+  watchedSeconds = new Set()
+  lastVideoTime = videoPlayerRef.value?.currentTime || 0
+  videoSeeking = false
+}
+
+function onVideoSeeking() {
+  videoSeeking = true
+}
+
+function onVideoSeeked() {
+  lastVideoTime = videoPlayerRef.value?.currentTime || 0
+  videoSeeking = false
+}
+
+function onVideoTimeUpdate() {
+  const player = videoPlayerRef.value
+  if (!player || videoSeeking || player.paused || !isPageVisible.value) return
+  const now = player.currentTime
+  const delta = now - lastVideoTime
+  // 浏览器正常播放的 timeupdate 间隔远小于2秒；跳播区间不计入观看覆盖。
+  if (delta > 0 && delta <= 2) {
+    for (let second = Math.floor(lastVideoTime); second <= Math.floor(now); second++) watchedSeconds.add(second)
+  }
+  lastVideoTime = now
+}
+
 function onVideoPause() {
   isVideoPlaying.value = false
 }
 
-function onVideoEnded() {
+async function onVideoEnded() {
   isVideoPlaying.value = false
   reportTime()
+  const duration = videoPlayerRef.value?.duration || 0
+  const required = Math.max(1, Math.floor(duration) - 1)
+  if (duration > 0 && watchedSeconds.size >= required) {
+    await markCurrentResourceComplete('video')
+  } else {
+    ElMessage.warning('视频存在未完整播放的片段，本次暂不计入已学')
+  }
+}
+
+async function loadProgress() {
+  const data = await getCourseProgress(route.params.courseId)
+  overallProgress.value = Number(data?.progress || 0)
+  completedKeys.value = new Set(data?.completedKeys || [])
+}
+
+async function markCurrentResourceComplete(resourceType) {
+  if (!current.value || !currentChapterId.value) return
+  const key = `${resourceType}:${current.value.id}`
+  if (completedKeys.value.has(key)) return
+  try {
+    const data = await completeLearningResource({
+      courseId: route.params.courseId,
+      chapterId: currentChapterId.value,
+      resourceType,
+      resourceId: current.value.id
+    })
+    overallProgress.value = Number(data?.progress || 0)
+    completedKeys.value = new Set(data?.completedKeys || [])
+    ElMessage.success(resourceType === 'video' ? '视频已完整学习' : '资料已计入学习进度')
+  } catch (error) {
+    console.error('更新学习进度失败:', error)
+  }
 }
 
 function onVisibilityChange() {
@@ -346,6 +397,10 @@ function onVisibilityChange() {
 
 function handleBeforeUnload() {
   reportTime()
+}
+
+function goToCourseDetail() {
+  router.push(`/student/course/${route.params.courseId}`)
 }
 
 function toggleSection(sectionId) {
@@ -361,10 +416,12 @@ function select(s, l, r, k) {
   reportTime()
   current.value = { ...r, sectionName: s.sectionName, chapterName: l.chapterName }
   kind.value = k
+  currentChapterId.value = l.chapterId || ''
   if (!expandedSections.value.includes(s.sectionId)) {
     expandedSections.value.push(s.sectionId)
   }
   setTimeout(() => startStudyTracking(), 100)
+  if (k === 'material') setTimeout(() => markCurrentResourceComplete('pdf'), 0)
 }
 
 function findResourceIndex() {
@@ -505,30 +562,33 @@ function formatDate(dateStr) {
 }
 
 onMounted(async () => {
-  sections.value = await getStudentContent(route.params.courseId)
-  
-  let totalResources = 0
-  let completedResources = 0
-  
+  const courseId = route.params.courseId
+  if (!courseId) {
+    ElMessage.error('课程ID无效')
+    return
+  }
+  try {
+    sections.value = await getStudentContent(courseId)
+  } catch (error) {
+    console.error('加载课程内容失败:', error)
+    return
+  }
+  try {
+    await loadProgress()
+  } catch (error) {
+    console.error('加载学习进度失败:', error)
+  }
+  let firstResource = null
   for (const section of sections.value) {
     expandedSections.value.push(section.sectionId)
     for (const lesson of section.lessons || []) {
-      totalResources += (lesson.videos?.length || 0) + (lesson.materials?.length || 0)
-      if (lesson.videos?.length) {
-        select(section, lesson, lesson.videos[0], 'video')
-        return
-      }
-      if (lesson.materials?.length) {
-        select(section, lesson, lesson.materials[0], 'material')
-        return
-      }
+      if (!firstResource && lesson.videos?.length) firstResource = [section, lesson, lesson.videos[0], 'video']
+      if (!firstResource && lesson.materials?.length) firstResource = [section, lesson, lesson.materials[0], 'material']
     }
   }
-  
-  overallProgress.value = totalResources > 0 ? Math.round((completedResources / totalResources) * 100) : 0
-  
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('beforeunload', handleBeforeUnload)
+  if (firstResource) select(...firstResource)
 })
 
 onBeforeUnmount(() => {
@@ -602,6 +662,23 @@ onBeforeUnmount(() => {
   font-size: var(--font-size-xs);
   color: var(--gray-500);
   margin: 0;
+}
+
+.course-detail-btn {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--primary-500);
+  background: rgba(59, 130, 246, 0.08);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.course-detail-btn:hover {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--primary-600);
 }
 
 .chapter-list {

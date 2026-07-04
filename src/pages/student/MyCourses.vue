@@ -53,6 +53,7 @@
               <el-button size="small" @click.stop="goToDetail(course.courseId)">
                 课程详情
               </el-button>
+              <el-button type="danger" plain size="small" @click.stop="withdraw(course)">退课</el-button>
             </div>
           </div>
         </div>
@@ -72,9 +73,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
-import { getEnrolledCourses } from '../../api/course.js'
+import { getEnrolledCourses, withdrawCourse } from '../../api/course.js'
 
 const router = useRouter()
 const courses = ref([])
@@ -107,6 +108,20 @@ function goToDetail(courseId) {
 
 function goToCourseCenter() {
   router.push('/student/courses')
+}
+
+async function withdraw(course) {
+  try {
+    await ElMessageBox.confirm(
+      `确认退出《${course.courseName}》？学习进度、成绩和历史作业会保留；重新选课后可继续学习。退课期间已截止且未完成的作业将在重新选课时计0分。`,
+      '确认退课', { type: 'warning', confirmButtonText: '确认退课', cancelButtonText: '取消' }
+    )
+    await withdrawCourse(course.courseId)
+    ElMessage.success('退课成功，历史学习数据已保留')
+    await loadCourses()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '退课失败')
+  }
 }
 
 onMounted(() => {

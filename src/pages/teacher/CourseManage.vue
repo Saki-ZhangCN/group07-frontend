@@ -188,7 +188,7 @@ function editCourse(id) {
 }
 
 function viewDetail(id) {
-  ElMessage.info('查看课程详情')
+  router.push(`/teacher/course/${id}/detail`)
 }
 
 async function submitReview(courseId) {

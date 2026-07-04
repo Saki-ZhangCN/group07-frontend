@@ -33,12 +33,12 @@
           <el-icon><Document /></el-icon>
           <span>作业管理</span>
         </el-menu-item>
-        <el-menu-item index="/teacher/exercises/create">
-          <el-icon><EditPen /></el-icon><span>添加习题</span>
-        </el-menu-item>
         <el-menu-item index="/teacher/homework/grade">
           <el-icon><Finished /></el-icon>
           <span>作业批改</span>
+        </el-menu-item>
+        <el-menu-item index="/teacher/exercises/create">
+          <el-icon><EditPen /></el-icon><span>添加习题</span>
         </el-menu-item>
         <el-menu-item index="/teacher/analysis">
           <el-icon><DataAnalysis /></el-icon>

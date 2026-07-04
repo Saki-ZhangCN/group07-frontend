@@ -1,5 +1,10 @@
 <template>
   <div class="homework-detail">
+    <div v-if="!homework" class="empty-state">
+      <el-icon :size="48"><Document /></el-icon>
+      <p>作业不存在或已删除</p>
+    </div>
+    <template v-else>
     <h1 class="hw-title">{{ homework.title }}</h1>
     <div class="hw-info">
       <span class="hw-course">{{ homework.course }}</span>
@@ -23,6 +28,10 @@
         <span>批改时间：{{ result.gradeTime }}</span>
       </div>
     </div>
+    <div v-else-if="result && ['submitted','pending_grade'].includes(result.status)" class="result-section pending-result">
+      <div class="result-header"><span class="result-status pending">已提交，等待教师批改</span></div>
+      <div class="result-meta"><span>提交时间：{{ result.submitTime }}</span></div>
+    </div>
 
     <div class="hw-content">
       <h3>题目内容</h3>
@@ -32,13 +41,13 @@
             <span class="question-number">{{ index + 1 }}.</span>
             <span class="question-type">{{ getQuestionTypeName(q.type) }}</span>
             <span class="question-score">（{{ q.score }}分）</span>
-            <span v-if="getAnswerResult(q.id)" class="answer-status" :class="getAnswerResult(q.id).correct ? 'correct' : 'wrong'">
+            <span v-if="getAnswerResult(q.id) && getAnswerResult(q.id).correct !== null" class="answer-status" :class="getAnswerResult(q.id).correct ? 'correct' : 'wrong'">
               {{ getAnswerResult(q.id).correct ? '正确' : '错误' }}
             </span>
           </div>
           <div class="question-content">{{ q.content }}</div>
           
-          <template v-if="!isGraded">
+          <template v-if="canAnswer">
               <div v-if="q.type === 'single' || q.type === 'judge'" class="question-options">
                 <el-radio-group v-model="answers[q.id]">
                   <el-radio v-for="(option, optIndex) in q.options" :key="optIndex" :label="option">{{ option }}</el-radio>
@@ -50,24 +59,28 @@
                 </el-checkbox-group>
               </div>
               <div v-else class="question-textarea">
-                <el-textarea v-model="answers[q.id]" :rows="4" placeholder="请输入答案"></el-textarea>
+                <el-input v-model="answers[q.id]" type="textarea" :rows="5" maxlength="2000" show-word-limit placeholder="请输入你的答案" :spellcheck="false"></el-input>
               </div>
             </template>
+
+          <div v-else-if="!isGraded" class="answer-result">
+            <div class="answer-row"><span class="label">你的答案：</span><span class="value answer-text">{{ getAnswerResult(q.id)?.answer || '未作答' }}</span></div>
+          </div>
 
           <div v-if="isGraded" class="answer-result">
             <div class="answer-row">
               <span class="label">你的答案：</span>
-              <span class="value" :class="getAnswerResult(q.id)?.correct ? 'correct' : 'wrong'">
+              <span class="value" :class="getAnswerResult(q.id)?.correct === null ? '' : (getAnswerResult(q.id)?.correct ? 'correct' : 'wrong')">
                 {{ getAnswerResult(q.id)?.answer || '未作答' }}
               </span>
             </div>
-            <div class="answer-row">
+            <div v-if="getAnswerResult(q.id)?.correct !== null" class="answer-row">
               <span class="label">标准答案：</span>
               <span class="value correct">{{ getAnswerResult(q.id)?.standardAnswer }}</span>
             </div>
-            <div v-if="getAnswerResult(q.id)?.teacherComment" class="answer-row">
+            <div v-if="getAnswerResult(q.id)?.teacherComment" class="answer-row teacher-comment-row">
               <span class="label">教师点评：</span>
-              <span class="value">{{ getAnswerResult(q.id)?.teacherComment }}</span>
+              <span class="value teacher-comment-value">{{ getAnswerResult(q.id)?.teacherComment }}</span>
             </div>
             <div v-if="getAnswerResult(q.id)?.analysis" class="answer-row">
               <span class="label">解析：</span>
@@ -78,27 +91,30 @@
       </div>
     </div>
     
-    <div class="hw-actions" v-if="!isGraded">
+    <div class="hw-actions" v-if="canAnswer">
       <el-button type="primary" size="large" :loading="submitting" @click="submit">提交作业</el-button>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getHomeworkDetail, getHomeworkResult, submitHomework } from '../../api/homework.js'
 import { formatDate } from '../../utils/date.js'
 
 const answers = ref({})
 const route = useRoute()
+const router = useRouter()
 const submitting = ref(false)
 const result = ref(null)
 
 const homework = ref({ questions: [], passScore: 60 })
 
 const isGraded = computed(() => result.value && result.value.status === 'graded')
+const canAnswer = computed(() => !result.value || result.value.status === 'rejected')
 
 function getQuestionTypeName(type) {
   const types = {
@@ -106,7 +122,9 @@ function getQuestionTypeName(type) {
     'multiple': '多选题',
     'judge': '判断题',
     'fill': '填空题',
-    'essay': '问答题'
+    'blank': '填空题',
+    'essay': '问答题',
+    'short': '简答题'
   }
   return types[type] || type
 }
@@ -117,20 +135,31 @@ function getAnswerResult(questionId) {
 }
 
 onMounted(async () => { 
-  homework.value = await getHomeworkDetail(route.params.id)
+  try {
+    homework.value = await getHomeworkDetail(route.params.id)
+    homework.value.questions?.forEach(q => { answers.value[q.id] = q.type === 'multiple' ? [] : '' })
+  } catch (e) {
+    homework.value = null
+  }
   try {
     result.value = await getHomeworkResult(route.params.id)
+    result.value?.answers?.forEach(a => { answers.value[a.questionId] = a.answer || (homework.value?.questions?.find(q => q.id === a.questionId)?.type === 'multiple' ? [] : '') })
   } catch (e) {
     result.value = null
   }
 })
 
 async function submit() {
+  const unanswered = homework.value.questions.filter(q => Array.isArray(answers.value[q.id]) ? answers.value[q.id].length === 0 : !String(answers.value[q.id] || '').trim())
+  if (unanswered.length) {
+    ElMessage.warning(`还有 ${unanswered.length} 道题未作答`)
+    return
+  }
   submitting.value = true
   try {
     await submitHomework(route.params.id, { answers: answers.value })
     ElMessage.success('提交成功')
-    result.value = await getHomeworkResult(route.params.id)
+    router.push('/student/homework')
   } finally { 
     submitting.value = false 
   }
@@ -178,6 +207,11 @@ async function submit() {
   color: var(--green-500);
   border-radius: var(--radius-full);
 }
+
+.result-status.pending { background: rgba(245, 158, 11, .12); color: #d97706; }
+.pending-result { border-left: 4px solid #f59e0b; }
+.question-textarea { margin-top: var(--spacing-lg); }
+.answer-text { white-space: pre-wrap; word-break: break-word; }
 
 .result-score {
   font-size: var(--font-size-xl);
@@ -315,5 +349,17 @@ async function submit() {
   display: flex;
   gap: var(--spacing-md);
   margin-top: var(--spacing-xl);
+}
+
+.teacher-comment-row {
+  background: rgba(245, 158, 11, 0.08);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent-orange);
+}
+
+.teacher-comment-value {
+  color: var(--accent-orange) !important;
+  font-weight: 500;
 }
 </style>

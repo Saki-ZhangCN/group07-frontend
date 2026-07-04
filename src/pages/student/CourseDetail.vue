@@ -53,7 +53,7 @@
             </div>
           </div>
           
-          <div class="course-actions">
+          <div class="course-actions" v-if="!isTeacherPreview">
             
             <div class="action-buttons">
               <el-button 
@@ -72,10 +72,11 @@
               >
                 继续学习
               </el-button>
+              <el-button v-if="isEnrolled" type="danger" plain size="large" @click="handleWithdraw">退课</el-button>
               <el-button 
                 size="large" 
                 disabled
-                v-else
+                v-if="!isEnrolled && course.status !== 'online'"
               >
                 {{ course.status === 'pending' ? '审核中' : '暂未上线' }}
               </el-button>
@@ -217,7 +218,7 @@
               <p>暂无评论，来说两句吧</p>
             </div>
             
-            <div v-if="isEnrolled" class="comments-footer">
+            <div v-if="isEnrolled && !isTeacherPreview" class="comments-footer">
               <textarea 
                 v-model="newComment" 
                 placeholder="发表评论..." 
@@ -233,7 +234,7 @@
               </div>
             </div>
             
-            <div v-else class="login-prompt">
+            <div v-else-if="!isTeacherPreview" class="login-prompt">
               <el-button type="primary" @click="startStudy">登录后发表评论</el-button>
             </div>
           </section>
@@ -268,14 +269,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
-import { getCourseDetail, enrollCourse, getCourseReviews, favoriteCourse, getCourseChapters, getCourseComments, addCourseComment, likeComment } from '../../api/course.js'
+import { getCourseDetail, enrollCourse, withdrawCourse, getCourseReviews, favoriteCourse, getCourseChapters, getCourseComments, addCourseComment, likeComment } from '../../api/course.js'
 
 const router = useRouter()
 const route = useRoute()
+const isTeacherPreview = computed(() => route.meta.teacherPreview === true)
 
 const courseId = route.params.id
 const isEnrolled = ref(false)
@@ -337,6 +339,18 @@ function handleEnroll() {
   }).catch(error => {
     ElMessage.error(error.message || '选课失败')
   })
+}
+
+async function handleWithdraw() {
+  try {
+    await ElMessageBox.confirm('退课后学习进度、成绩与历史作业仍会保留，重新选课可继续学习。确认退课？', '确认退课', { type: 'warning' })
+    await withdrawCourse(courseId)
+    isEnrolled.value = false
+    course.value.studentCount = Math.max(0, Number(course.value.studentCount || 0) - 1)
+    ElMessage.success('退课成功，相关学习数据已保留')
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '退课失败')
+  }
 }
 
 function startStudy() {

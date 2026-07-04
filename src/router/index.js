@@ -48,6 +48,7 @@ const routes = [
       { path: 'courses', name: 'CourseManage', component: () => import('../pages/teacher/CourseManage.vue') },
       { path: 'course/create', name: 'CourseCreate', component: () => import('../pages/teacher/CourseCreate.vue') },
       { path: 'course/edit/:id', name: 'CourseEdit', component: () => import('../pages/teacher/CourseEdit.vue') },
+      { path: 'course/:id/detail', name: 'TeacherCourseDetail', component: () => import('../pages/student/CourseDetail.vue'), meta: { teacherPreview: true } },
       { path: 'live', name: 'LiveManage', component: () => import('../pages/teacher/LiveManage.vue') },
       { path: 'live/teaching/:roomId', name: 'LiveTeaching', component: () => import('../pages/teacher/LiveTeaching.vue') },
       { path: 'homework', name: 'HomeworkManage', component: () => import('../pages/teacher/HomeworkManage.vue') },

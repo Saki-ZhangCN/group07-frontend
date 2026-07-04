@@ -71,7 +71,10 @@
               </span>
             </div>
             <div class="course-footer">
-              <el-button type="primary" size="small" @click.stop="handleEnroll(course)">
+              <el-button v-if="enrolledIds.has(course.courseId)" type="info" size="small" disabled>
+                已选
+              </el-button>
+              <el-button v-else type="primary" size="small" @click.stop="handleEnroll(course)">
                 选课
               </el-button>
             </div>
@@ -104,7 +107,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getCourseList, enrollCourse } from '../../api/course.js'
+import { getCourseList, enrollCourse, getEnrolledCourses } from '../../api/course.js'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 
 const router = useRouter()
@@ -117,6 +120,7 @@ const currentPage = ref(1)
 const pageSize = ref(12)
 const totalCount = ref(0)
 const courses = ref([])
+const enrolledIds = ref(new Set())
 const categories = ref(['编程开发', '设计艺术', '语言学习', '数学科学'])
 
 onMounted(() => {
@@ -124,7 +128,15 @@ onMounted(() => {
     searchKeyword.value = route.query.keyword
   }
   handleSearch()
+  loadEnrolledIds()
 })
+
+async function loadEnrolledIds() {
+  try {
+    const list = await getEnrolledCourses()
+    enrolledIds.value = new Set((list || []).map(c => c.courseId))
+  } catch (e) { /* 静默失败 */ }
+}
 
 async function handleSearch() {
   try {
@@ -150,6 +162,7 @@ async function handleEnroll(course) {
   try {
     await enrollCourse(course.courseId)
     ElMessage.success('选课成功！')
+    enrolledIds.value.add(course.courseId)
     handleSearch()
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '选课失败')

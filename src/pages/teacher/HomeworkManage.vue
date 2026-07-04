@@ -54,7 +54,7 @@
               <el-option label="简单" value="easy" /><el-option label="中等" value="medium" /><el-option label="困难" value="hard" />
             </el-select>
             <el-select v-model="filters.type" clearable placeholder="题型" @change="loadExercises">
-              <el-option label="单选题" value="single" /><el-option label="判断题" value="judge" /><el-option label="简答题" value="short" />
+              <el-option label="单选题" value="single" /><el-option label="多选题" value="multiple" /><el-option label="判断题" value="judge" /><el-option label="填空题" value="blank" /><el-option label="简答题" value="short" />
             </el-select>
             <el-input v-model="filters.keyword" clearable placeholder="题目/知识点" @keyup.enter="loadExercises" />
             <el-button @click="loadExercises">查询</el-button>
@@ -169,7 +169,7 @@ async function handleCourseChange() {
 function handleSelectionChange(rows) { form.value.exerciseIds = rows.map(item => item.id) }
 function difficultyLabel(value) { return ({ easy: '简单', medium: '中等', hard: '困难' })[value] || value }
 function difficultyType(value) { return ({ easy: 'success', medium: 'warning', hard: 'danger' })[value] || 'info' }
-function typeLabel(value) { return ({ single: '单选', judge: '判断', short: '简答' })[value] || value }
+function typeLabel(value) { return ({ single: '单选', multiple: '多选', judge: '判断', blank: '填空', short: '简答' })[value] || value }
 
 async function remove(id) {
   await ElMessageBox.confirm('确定删除该作业吗？', '提示', { type: 'warning' })
