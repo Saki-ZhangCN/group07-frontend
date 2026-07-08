@@ -55,19 +55,6 @@ export function getCourseRanking(params) {
 }
 
 /**
- * 获取预警用户列表
- * @param {Object} params - 查询参数
- * @returns {Promise} 预警列表
- */
-export function getWarningUsers(params) {
-  return request({
-    url: '/dashboard/warning-users',
-    method: 'get',
-    params
-  })
-}
-
-/**
  * 获取作业统计
  * @param {Object} params - 查询参数
  * @returns {Promise} 作业统计数据

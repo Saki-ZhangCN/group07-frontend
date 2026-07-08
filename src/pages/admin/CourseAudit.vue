@@ -52,13 +52,13 @@
           </div>
           
           <div class="action-buttons" v-if="course.status === 'pending'">
-            <el-button type="primary" @click="viewDetail(course.courseId)">
+            <el-button size="small" type="primary" @click="viewDetail(course.courseId)">
               查看详情
             </el-button>
-            <el-button type="success" @click="approveCourse(course)">
+            <el-button size="small" type="success" @click="approveCourse(course)">
               通过审核
             </el-button>
-            <el-button type="danger" @click="rejectCourse(course)">
+            <el-button size="small" type="danger" @click="rejectCourse(course)">
               拒绝
             </el-button>
           </div>
@@ -168,7 +168,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 import { auditCourse, getPendingCourses, getCourseDetail } from '../../api/admin.js'
@@ -183,10 +184,16 @@ const courses = ref([])
 const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailCourse = ref(null)
+const route = useRoute()
 
-onMounted(() => {
-  loadCourses()
-})
+onMounted(async () => { await applyRouteAction() })
+watch(() => route.fullPath, applyRouteAction)
+
+async function applyRouteAction() {
+  if (route.query.status) statusFilter.value = String(route.query.status)
+  await loadCourses()
+  if (route.query.courseId) await viewDetail(String(route.query.courseId))
+}
 
 async function loadCourses() {
   try {
@@ -204,7 +211,8 @@ function getStatusClass(status) {
     pending: 'pending',
     online: 'approved',
     rejected: 'rejected',
-    draft: 'draft'
+    draft: 'draft',
+    offline: 'rejected'
   }
   return classMap[status] || ''
 }
@@ -214,7 +222,8 @@ function getStatusLabel(status) {
     pending: '待审核',
     online: '已通过',
     rejected: '已拒绝',
-    draft: '草稿'
+    draft: '草稿',
+    offline: '已拒绝'
   }
   return labelMap[status] || status
 }

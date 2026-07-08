@@ -4,3 +4,4 @@ export const getTrainingCourses = () => request({ url: '/exercises/training/cour
 export const startTraining = courseId => request({ url: '/exercises/training/start', method: 'post', data: { courseId } })
 export const answerTraining = (id, data) => request({ url: `/exercises/training/${id}/answer`, method: 'post', data })
 export const finishTraining = id => request({ url: `/exercises/training/${id}/finish`, method: 'post' })
+export const cancelTraining = id => request({ url: `/exercises/training/${id}/cancel`, method: 'post' })

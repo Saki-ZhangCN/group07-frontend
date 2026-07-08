@@ -42,6 +42,7 @@
                 >
                   <el-icon><VideoPlay /></el-icon>
                   <span>{{ video.title }}</span>
+                  <span v-if="isResourceCompleted('video', video.id)" class="completed-check" title="已学完">✓</span>
                 </button>
                 <button 
                   v-for="material in lesson.materials" 
@@ -52,6 +53,7 @@
                 >
                   <el-icon><Document /></el-icon>
                   <span>{{ material.title }}</span>
+                  <span v-if="isResourceCompleted('pdf', material.id)" class="completed-check" title="已学完">✓</span>
                 </button>
               </div>
             </div>
@@ -368,13 +370,26 @@ async function onVideoEnded() {
 
 async function loadProgress() {
   const data = await getCourseProgress(route.params.courseId)
-  overallProgress.value = Number(data?.progress || 0)
+  overallProgress.value = normalizeProgress(data?.progress)
   completedKeys.value = new Set(data?.completedKeys || [])
+}
+
+function normalizeProgress(value) {
+  return Math.round(Number(value || 0))
+}
+
+function resourceKey(resourceType, resourceId) {
+  const normalizedType = resourceType === 'material' ? 'pdf' : resourceType
+  return `${normalizedType}:${resourceId}`
+}
+
+function isResourceCompleted(resourceType, resourceId) {
+  return completedKeys.value.has(resourceKey(resourceType, resourceId))
 }
 
 async function markCurrentResourceComplete(resourceType) {
   if (!current.value || !currentChapterId.value) return
-  const key = `${resourceType}:${current.value.id}`
+  const key = resourceKey(resourceType, current.value.id)
   if (completedKeys.value.has(key)) return
   try {
     const data = await completeLearningResource({
@@ -383,7 +398,7 @@ async function markCurrentResourceComplete(resourceType) {
       resourceType,
       resourceId: current.value.id
     })
-    overallProgress.value = Number(data?.progress || 0)
+    overallProgress.value = normalizeProgress(data?.progress)
     completedKeys.value = new Set(data?.completedKeys || [])
     ElMessage.success(resourceType === 'video' ? '视频已完整学习' : '资料已计入学习进度')
   } catch (error) {
@@ -757,6 +772,31 @@ onBeforeUnmount(() => {
   font-size: var(--font-size-xs);
   cursor: pointer;
   transition: all var(--transition-fast);
+}
+
+.resource-btn span:nth-of-type(1) {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.completed-check {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #22c55e;
+  box-shadow: 0 3px 8px rgba(34, 197, 94, 0.25);
 }
 
 .video-btn {

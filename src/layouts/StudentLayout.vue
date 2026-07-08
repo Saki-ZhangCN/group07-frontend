@@ -75,14 +75,11 @@
               @keyup.enter="handleSearch"
             />
           </div>
-          <el-badge :value="notificationCount" :max="99" class="notification-badge">
-            <el-button circle>
-              <el-icon><Bell /></el-icon>
-            </el-button>
-          </el-badge>
+          <AnnouncementBell />
           <el-dropdown trigger="click">
             <div class="user-info">
-              <el-avatar :size="40" :src="userAvatar">
+              <img v-if="userAvatar" :src="userAvatar" class="header-avatar" />
+              <el-avatar v-else :size="40">
                 <el-icon><UserFilled /></el-icon>
               </el-avatar>
               <span class="user-name">{{ userName }}</span>
@@ -120,6 +117,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import AnnouncementBell from '../components/AnnouncementBell.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -127,7 +125,6 @@ const authStore = useAuthStore()
 
 const isCollapsed = ref(false)
 const searchKeyword = ref('')
-const notificationCount = ref(3)
 
 const activeMenu = computed(() => route.path)
 const pageTitle = computed(() => {
@@ -241,6 +238,17 @@ async function handleLogout() {
   border: none;
 }
 
+.sidebar.collapsed .el-menu-item {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar.collapsed :deep(.el-menu-item.is-active) {
+  margin: 4px 0 !important;
+  width: 100% !important;
+}
+
 .sidebar-footer {
   padding: var(--spacing-md);
   border-top: 1px solid var(--gray-100);
@@ -333,6 +341,13 @@ async function handleLogout() {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--gray-700);
+}
+
+.header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .content-wrapper {

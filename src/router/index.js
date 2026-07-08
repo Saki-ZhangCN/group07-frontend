@@ -53,7 +53,6 @@ const routes = [
       { path: 'live/teaching/:roomId', name: 'LiveTeaching', component: () => import('../pages/teacher/LiveTeaching.vue') },
       { path: 'homework', name: 'HomeworkManage', component: () => import('../pages/teacher/HomeworkManage.vue') },
       { path: 'exercises/create', name: 'ExerciseCreate', component: () => import('../pages/teacher/ExerciseCreate.vue') },
-      { path: 'homework/grade', name: 'HomeworkGrade', component: () => import('../pages/teacher/HomeworkGrade.vue') },
       { path: 'analysis', name: 'LearningAnalysis', component: () => import('../pages/teacher/LearningAnalysis.vue') },
       { path: 'profile', name: 'TeacherPersonalCenter', component: () => import('../pages/teacher/PersonalCenter.vue') }
     ]
@@ -71,10 +70,9 @@ const routes = [
       { path: 'courses', name: 'CourseAudit', component: () => import('../pages/admin/CourseAudit.vue') },
       { path: 'courses/list', name: 'CourseList', component: () => import('../pages/admin/CourseList.vue') },
       { path: 'exams', name: 'ExamManage', component: () => import('../pages/admin/ExamManage.vue') },
-      { path: 'content-audit', name: 'ContentAudit', component: () => import('../pages/admin/ContentAudit.vue') },
       { path: 'announcements', name: 'Announcement', component: () => import('../pages/admin/Announcement.vue') },
       { path: 'statistics', name: 'Statistics', component: () => import('../pages/admin/Statistics.vue') },
-      { path: 'system', name: 'SystemConfig', component: () => import('../pages/admin/SystemConfig.vue') }
+      { path: 'profile', name: 'AdminProfile', component: () => import('../pages/admin/Profile.vue') }
     ]
   },
   

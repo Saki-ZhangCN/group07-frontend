@@ -68,7 +68,13 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right"><template #default="{row}"><el-button link :type="row.status==='online'?'warning':'success'" @click="togglePublish(row)">{{row.status==='online'?'下架':'上架'}}</el-button></template></el-table-column>
+        <el-table-column label="操作" width="140" fixed="right">
+          <template #default="{row}">
+            <el-button v-if="row.status==='online'" size="small" type="warning" @click="handleUnpublish(row)">下架</el-button>
+            <el-button v-else-if="row.status==='pending'" size="small" type="primary" @click="goToAudit(row)">审核</el-button>
+            <el-button v-else size="small" type="primary" @click="viewDetail(row)">详情</el-button>
+          </template>
+        </el-table-column>
         
         <el-table-column 
           label="课程ID" 
@@ -142,10 +148,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourseList } from '../../api/course.js'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
-import { publishCourse, unpublishCourse } from '../../api/admin.js'
+import { unpublishCourse } from '../../api/admin.js'
+
+const router = useRouter()
 
 const statusFilter = ref('')
 const searchKeyword = ref('')
@@ -210,7 +219,8 @@ function getStatusClass(status) {
     online: 'approved',
     pending: 'reviewing',
     rejected: 'rejected',
-    draft: 'draft'
+    draft: 'draft',
+    offline: 'rejected'
   }
   return classMap[status] || ''
 }
@@ -220,7 +230,8 @@ function getStatusLabel(status) {
     online: '已通过',
     pending: '审核中',
     rejected: '未通过',
-    draft: '草稿'
+    draft: '草稿',
+    offline: '未通过'
   }
   return labelMap[status] || status
 }
@@ -234,7 +245,28 @@ function exportData() {
   const csv = ['课程ID,课程名称,教师,分类,状态,学生数',...courses.value.map(c=>[c.courseId,c.courseName,c.teacherName,c.category,c.status,c.studentCount||0].map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(','))].join('\n')
   const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='课程列表.csv';a.click();URL.revokeObjectURL(url);ElMessage.success('数据导出成功')
 }
-async function togglePublish(row){if(row.status==='online')await unpublishCourse(row.courseId);else await publishCourse(row.courseId);ElMessage.success(row.status==='online'?'课程已下架':'课程已上架');await loadCourses()}
+async function handleUnpublish(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定下架课程“${row.courseName}”吗？下架后学生将无法继续选修该课程。`,
+      '二次确认',
+      { confirmButtonText: '确认下架', cancelButtonText: '取消', type: 'warning' }
+    )
+    await unpublishCourse(row.courseId)
+    ElMessage.success('课程已下架，并归入未通过课程')
+    await loadCourses()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error('课程下架失败')
+  }
+}
+
+function goToAudit(row) {
+  router.push({ path: '/admin/courses', query: { status: 'pending', courseId: row.courseId } })
+}
+
+function viewDetail(row) {
+  router.push({ path: '/admin/courses', query: { status: row.status, courseId: row.courseId, detail: '1' } })
+}
 </script>
 
 <style scoped>

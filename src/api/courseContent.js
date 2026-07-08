@@ -8,5 +8,3 @@ export const updateLesson = (id,data) => request({url:`/course-content/teacher/c
 export const withdrawResource = (kind,id) => request({url:`/course-content/teacher/resources/${kind}/${id}`,method:'delete'})
 export const deleteChapter = id => request({url:`/course-content/teacher/chapters/${id}`,method:'delete'})
 export const getStudentContent = id => request({url:`/course-content/student/${id}`,method:'get'})
-export const getPendingResources = () => request({url:'/course-content/admin/pending',method:'get'})
-export const reviewResource = (kind,id,data) => request({url:`/course-content/admin/${kind}/${id}/review`,method:'post',data})

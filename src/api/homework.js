@@ -168,12 +168,14 @@ export function getHomeworkStats(homeworkId) {
 
 /**
  * 获取错题本
+ * @param {string} courseId - 课程ID（可选）
  * @returns {Promise} 错题列表
  */
-export function getWrongBook() {
+export function getWrongBook(courseId) {
   return request({
     url: '/homework/wrong-book',
-    method: 'get'
+    method: 'get',
+    params: courseId ? { courseId } : undefined
   })
 }
 

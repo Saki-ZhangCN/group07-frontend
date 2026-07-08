@@ -172,6 +172,7 @@ import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
 import { formatDate } from '../../utils/date.js'
 import { getEnrolledCourses, getCourseList } from '../../api/course.js'
 import { getHomeworkList } from '../../api/homework.js'
+import { getLearningReport } from '../../api/analysis.js'
 
 const router = useRouter()
 
@@ -188,18 +189,23 @@ const recommendedCourses = ref([])
 
 async function loadStats() {
   try {
-    const coursesResponse = await getEnrolledCourses()
-    const courses = coursesResponse.data || coursesResponse
-    stats.value.enrolledCourses = courses.length
-    
+    const report = await getLearningReport()
+    stats.value.enrolledCourses = report.enrolledCourses || 0
+    stats.value.studyHours = formatHours(report.totalStudyTime || 0)
+    stats.value.completedHomework = report.completedHomework || 0
+    stats.value.avgScore = report.averageScore != null ? Math.round(report.averageScore) : 0
+
     const homeworkResponse = await getHomeworkList({ page: 1, size: 100, status: 'pending' })
     const homeworkData = homeworkResponse.data || homeworkResponse
     const homeworkList = homeworkData.records || homeworkData.list || homeworkData
-    stats.value.completedHomework = homeworkList.filter(hw => hw.status === 'completed').length
-    pendingHomework.value = homeworkList.filter(hw => hw.status !== 'completed').slice(0, 5)
+    pendingHomework.value = (Array.isArray(homeworkList) ? homeworkList : []).slice(0, 5)
   } catch (error) {
     console.error('加载统计数据失败', error)
   }
+}
+
+function formatHours(seconds) {
+  return (seconds / 3600).toFixed(1)
 }
 
 async function loadOngoingCourses() {

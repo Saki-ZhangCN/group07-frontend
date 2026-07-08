@@ -33,10 +33,6 @@
           <el-icon><Document /></el-icon>
           <span>作业管理</span>
         </el-menu-item>
-        <el-menu-item index="/teacher/homework/grade">
-          <el-icon><Finished /></el-icon>
-          <span>作业批改</span>
-        </el-menu-item>
         <el-menu-item index="/teacher/exercises/create">
           <el-icon><EditPen /></el-icon><span>添加习题</span>
         </el-menu-item>
@@ -68,17 +64,11 @@
           <h1 class="page-title">{{ pageTitle }}</h1>
         </div>
         <div class="header-right">
-          <el-badge :value="pendingCount" :max="99" class="notification-badge" v-if="pendingCount > 0">
-            <el-button circle>
-              <el-icon><Bell /></el-icon>
-            </el-button>
-          </el-badge>
-          <el-button circle v-else>
-            <el-icon><Bell /></el-icon>
-          </el-button>
+          <AnnouncementBell />
           <el-dropdown trigger="click">
             <div class="user-info">
-              <el-avatar :size="40" :src="userAvatar">
+              <img v-if="userAvatar" :src="userAvatar" class="header-avatar" />
+              <el-avatar v-else :size="40">
                 <el-icon><UserFilled /></el-icon>
               </el-avatar>
               <span class="user-name">{{ userName }}</span>
@@ -116,13 +106,13 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import AnnouncementBell from '../components/AnnouncementBell.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
 const isCollapsed = ref(false)
-const pendingCount = ref(5)
 
 const activeMenu = computed(() => route.path)
 const pageTitle = computed(() => {
@@ -135,7 +125,6 @@ const pageTitle = computed(() => {
     '/teacher/live/teaching': '直播授课',
     '/teacher/homework': '作业管理',
     '/teacher/exercises/create': '添加习题',
-    '/teacher/homework/grade': '作业批改',
     '/teacher/analysis': '学情分析',
     '/teacher/profile': '个人中心'
   }
@@ -232,6 +221,17 @@ async function handleLogout() {
   border: none;
 }
 
+.sidebar.collapsed .el-menu-item {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar.collapsed :deep(.el-menu-item.is-active) {
+  margin: 4px 0 !important;
+  width: 100% !important;
+}
+
 .sidebar-footer {
   padding: var(--spacing-md);
   border-top: 1px solid var(--gray-100);
@@ -320,6 +320,13 @@ async function handleLogout() {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--gray-700);
+}
+
+.header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .content-wrapper {

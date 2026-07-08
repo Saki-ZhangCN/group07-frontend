@@ -21,26 +21,22 @@
           <el-icon><Odometer /></el-icon>
           <span>数据看板</span>
         </el-menu-item>
-        <el-sub-menu index="user-management">
-          <template #title>
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
-          </template>
-          <el-menu-item index="/admin/users">用户列表</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="course-management">
-          <template #title>
-            <el-icon><Reading /></el-icon>
-            <span>课程管理</span>
-          </template>
-          <el-menu-item index="/admin/courses">课程审核</el-menu-item>
-          <el-menu-item index="/admin/courses/list">课程列表</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="/admin/users">
+          <el-icon><User /></el-icon>
+          <span>用户管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/courses">
+          <el-icon><Reading /></el-icon>
+          <span>课程审核</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/courses/list">
+          <el-icon><FolderOpened /></el-icon>
+          <span>课程列表</span>
+        </el-menu-item>
         <el-menu-item index="/admin/exams">
           <el-icon><Edit /></el-icon>
           <span>题库管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/content-audit"><el-icon><VideoPlay /></el-icon><span>教学资源审核</span></el-menu-item>
         <el-menu-item index="/admin/announcements">
           <el-icon><ChatDotRound /></el-icon>
           <span>公告管理</span>
@@ -49,9 +45,9 @@
           <el-icon><TrendCharts /></el-icon>
           <span>统计分析</span>
         </el-menu-item>
-        <el-menu-item index="/admin/system">
-          <el-icon><Setting /></el-icon>
-          <span>系统配置</span>
+        <el-menu-item index="/admin/profile">
+          <el-icon><User /></el-icon>
+          <span>个人中心</span>
         </el-menu-item>
       </el-menu>
       
@@ -73,19 +69,22 @@
           <h1 class="page-title">{{ pageTitle }}</h1>
         </div>
         <div class="header-right">
-          <el-button circle>
-            <el-icon><Bell /></el-icon>
-          </el-button>
+          <AnnouncementBell />
           <el-dropdown trigger="click">
             <div class="user-info">
-              <el-avatar :size="40" :src="userAvatar">
+              <img v-if="userAvatar" :src="userAvatar" class="header-avatar" />
+              <el-avatar v-else :size="40">
                 <el-icon><UserFilled /></el-icon>
               </el-avatar>
               <span class="user-name">{{ userName }}</span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="handleLogout">
+                <el-dropdown-item @click="goToProfile">
+                  <el-icon><User /></el-icon>
+                  个人中心
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">
                   <el-icon><SwitchButton /></el-icon>
                   退出登录
                 </el-dropdown-item>
@@ -112,6 +111,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import AnnouncementBell from '../components/AnnouncementBell.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -127,10 +127,9 @@ const pageTitle = computed(() => {
     '/admin/courses': '课程审核',
     '/admin/courses/list': '课程列表',
     '/admin/exams': '题库管理',
-    '/admin/content-audit': '教学资源审核',
     '/admin/announcements': '公告管理',
     '/admin/statistics': '统计分析',
-    '/admin/system': '系统配置'
+    '/admin/profile': '个人中心'
   }
   return titles[route.path] || '运营管理后台'
 })
@@ -140,6 +139,10 @@ const userAvatar = computed(() => authStore.userInfo?.avatar || '')
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value
+}
+
+function goToProfile() {
+  router.push('/admin/profile')
 }
 
 async function handleLogout() {
@@ -221,6 +224,17 @@ async function handleLogout() {
   border: none;
 }
 
+.sidebar.collapsed .el-menu-item {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar.collapsed :deep(.el-menu-item.is-active) {
+  margin: 4px 0 !important;
+  width: 100% !important;
+}
+
 .sidebar-footer {
   padding: var(--spacing-md);
   border-top: 1px solid var(--gray-100);
@@ -287,6 +301,10 @@ async function handleLogout() {
   gap: var(--spacing-lg);
 }
 
+.notification-badge {
+  cursor: pointer;
+}
+
 .user-info {
   display: flex;
   align-items: center;
@@ -305,6 +323,13 @@ async function handleLogout() {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--gray-700);
+}
+
+.header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .content-wrapper {

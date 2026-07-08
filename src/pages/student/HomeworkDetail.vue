@@ -50,12 +50,12 @@
           <template v-if="canAnswer">
               <div v-if="q.type === 'single' || q.type === 'judge'" class="question-options">
                 <el-radio-group v-model="answers[q.id]">
-                  <el-radio v-for="(option, optIndex) in q.options" :key="optIndex" :label="option">{{ option }}</el-radio>
+                  <el-radio v-for="(option, optIndex) in getOptions(q)" :key="optIndex" :label="option.content">{{ q.type === 'judge' ? option.content : option.optionKey + '. ' + option.content }}</el-radio>
                 </el-radio-group>
               </div>
               <div v-else-if="q.type === 'multiple'" class="question-options">
                 <el-checkbox-group v-model="answers[q.id]">
-                  <el-checkbox v-for="(option, optIndex) in q.options" :key="optIndex" :label="option">{{ option }}</el-checkbox>
+                  <el-checkbox v-for="(option, optIndex) in q.options" :key="optIndex" :label="option.content">{{ option.optionKey }}. {{ option.content }}</el-checkbox>
                 </el-checkbox-group>
               </div>
               <div v-else class="question-textarea">
@@ -133,6 +133,9 @@ function getAnswerResult(questionId) {
   if (!result.value || !result.value.answers) return null
   return result.value.answers.find(a => a.questionId === questionId)
 }
+function getOptions(q) {
+  return (q.type === 'judge' && !(q.options?.length)) ? [{ optionKey: '', content: 'true' }, { optionKey: '', content: 'false' }] : (q.options || [])
+}
 
 onMounted(async () => { 
   try {
@@ -150,14 +153,23 @@ onMounted(async () => {
 })
 
 async function submit() {
-  const unanswered = homework.value.questions.filter(q => Array.isArray(answers.value[q.id]) ? answers.value[q.id].length === 0 : !String(answers.value[q.id] || '').trim())
+  const unanswered = homework.value.questions.filter(q => {
+    const val = answers.value[q.id]
+    if (q.type === 'multiple') return !Array.isArray(val) || val.length === 0
+    return !String(val || '').trim()
+  })
   if (unanswered.length) {
     ElMessage.warning(`还有 ${unanswered.length} 道题未作答`)
     return
   }
   submitting.value = true
   try {
-    await submitHomework(route.params.id, { answers: answers.value })
+    const payload = {}
+    Object.keys(answers.value).forEach(key => {
+      const val = answers.value[key]
+      payload[key] = Array.isArray(val) ? val.join(',') : String(val || '')
+    })
+    await submitHomework(route.params.id, { answers: payload })
     ElMessage.success('提交成功')
     router.push('/student/homework')
   } finally { 

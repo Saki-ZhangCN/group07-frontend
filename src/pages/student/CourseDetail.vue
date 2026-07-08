@@ -376,7 +376,7 @@ function loadCourseDetail() {
       courseId: data.courseId,
       courseName: data.courseName,
       category: data.category,
-      coverImage: data.coverImage || '/uploads/default-image.jpg',
+      coverImage: data.coverImage || '/uploads/course-covers/default-image.jpg',
       rating: data.rating || 0,
       studentCount: data.studentCount || 0,
       totalHours: data.totalHours || 0,

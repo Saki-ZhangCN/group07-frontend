@@ -103,24 +103,7 @@
           </div>
         </div>
         
-        <!-- 预警学员 -->
-        <div class="overview-card">
-          <h3 class="card-title">学习预警学员</h3>
-          <div class="warning-list">
-            <div class="warning-item" v-for="item in warningStudents" :key="item.id">
-              <div class="warning-info">
-                <span class="warning-name">{{ item.realName }}</span>
-                <span class="warning-course">{{ item.reason }}</span>
-              </div>
-              <div class="warning-status">
-                <span class="warning-days">{{ item.status }}</span>
-                <el-button size="small" type="danger" @click="handleWarning(item)">
-                  处理
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </div>
+        
       </div>
     </div>
   </div>
@@ -130,7 +113,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { Top } from '@element-plus/icons-vue'
-import { getActivityTrend, getCompletionRate, getCourseRanking, getDashboardStats, getWarningUsers } from '../../api/dashboard.js'
+import { getActivityTrend, getCompletionRate, getCourseRanking, getDashboardStats } from '../../api/dashboard.js'
 
 const timeRange = ref('week')
 
@@ -151,12 +134,6 @@ const courseRanking = ref([
   { id: '5', name: '数据库原理', students: 1420 }
 ])
 
-const warningStudents = ref([
-  { id: '1', name: '学员A', course: 'Java编程基础', days: 7 },
-  { id: '2', name: '学员B', course: 'Python数据分析', days: 5 },
-  { id: '3', name: '学员C', course: 'Web前端开发', days: 10 }
-])
-
 const lineChartRef = ref(null)
 const pieChartRef = ref(null)
 
@@ -164,10 +141,6 @@ let lineChart = null
 let pieChart = null
 let activityData = { dates: [], values: [] }
 let completionData = { dates: [], values: [] }
-
-function handleWarning(item) {
-  // 处理预警学员
-}
 
 function initCharts() {
   // 折线图
@@ -220,14 +193,13 @@ function initCharts() {
 }
 
 onMounted(async () => {
-  const [summary, ranking, warnings, activity, completion] = await Promise.all([
-    getDashboardStats(), getCourseRanking({}), getWarningUsers({ page: 1, size: 5 }), getActivityTrend({}), getCompletionRate({})
+  const [summary, ranking, activity, completion] = await Promise.all([
+    getDashboardStats(), getCourseRanking({}), getActivityTrend({}), getCompletionRate({})
   ])
   stats.value = { ...stats.value, ...summary, activeStudents: summary.activeUsers, avgRating: Number(summary.averageScore||0).toFixed(1) }
   activityData = activity || activityData
   completionData = completion || completionData
   courseRanking.value = ranking || []
-  warningStudents.value = warnings.records || []
   initCharts()
   window.addEventListener('resize', () => {
     lineChart?.resize()
@@ -329,7 +301,7 @@ onUnmounted(() => {
 
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing-lg);
 }
 
@@ -389,48 +361,6 @@ onUnmounted(() => {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--gray-500);
-}
-
-.warning-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.warning-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-md);
-  background: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--radius-md);
-}
-
-.warning-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.warning-name {
-  font-weight: 500;
-  color: var(--gray-800);
-}
-
-.warning-course {
-  font-size: var(--font-size-xs);
-  color: var(--gray-500);
-}
-
-.warning-status {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.warning-days {
-  font-size: var(--font-size-xs);
-  color: var(--red-500);
 }
 
 @media (max-width: 1023px) {

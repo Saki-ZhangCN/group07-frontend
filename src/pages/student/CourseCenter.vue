@@ -37,7 +37,6 @@
     
     <div class="courses-section">
       <div class="courses-header">
-        <span class="courses-count">共 {{ totalCount }} 门课程</span>
         <el-select v-model="sortBy" placeholder="排序方式" size="default" @change="handleSearch">
           <el-option label="最新发布" value="latest" />
           <el-option label="评分最高" value="rating" />
@@ -143,6 +142,7 @@ async function handleSearch() {
     const response = await getCourseList({
       keyword: searchKeyword.value,
       category: selectedCategory.value || undefined,
+      status: 'online',
       page: currentPage.value,
       size: pageSize.value
     })
@@ -172,20 +172,20 @@ async function handleEnroll(course) {
 
 <style scoped>
 .course-center {
-  max-width: 1200px;
+  width: 100%;
 }
 
 .search-filter-section {
   background: white;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   border-radius: var(--radius-xl);
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
 }
 
 .search-box {
   display: flex;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
 }
 
 .search-box .el-input {
@@ -220,30 +220,25 @@ async function handleEnroll(course) {
 
 .courses-section {
   background: white;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   border-radius: var(--radius-xl);
 }
 
 .courses-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-lg);
-}
-
-.courses-count {
-  font-size: var(--font-size-sm);
-  color: var(--gray-500);
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-md);
 }
 
 .courses-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-md);
 }
 
 .course-card {
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
   transition: all var(--transition-base);
@@ -251,14 +246,14 @@ async function handleEnroll(course) {
 }
 
 .course-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
   border-color: var(--primary-100);
 }
 
 .course-cover {
   position: relative;
-  aspect-ratio: 16/9;
+  height: 90px;
   overflow: hidden;
 }
 
@@ -274,18 +269,18 @@ async function handleEnroll(course) {
 }
 
 .course-info {
-  padding: var(--spacing-lg);
+  padding: 6px;
 }
 
 .course-category {
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 4px;
 }
 
 .course-name {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--gray-800);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 4px;
   line-height: 1.4;
 }
 
@@ -296,16 +291,16 @@ async function handleEnroll(course) {
 .course-teacher {
   font-size: var(--font-size-sm);
   color: var(--gray-500);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 4px;
 }
 
 .course-meta {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
   font-size: var(--font-size-sm);
   color: var(--gray-500);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 4px;
 }
 
 .course-rating {

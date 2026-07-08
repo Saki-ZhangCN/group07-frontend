@@ -33,7 +33,7 @@
                 <p class="card-meta">{{ course.category }} | {{ course.totalHours }}课时</p>
                 <p class="card-time">更新时间：{{ formatTime(course.updateTime) }}</p>
                 <div class="card-actions">
-                  <el-button size="small" @click="editCourse(course.courseId)">编辑</el-button>
+                  <el-button size="small" type="warning" @click="editCourse(course.courseId)">编辑</el-button>
                   <el-button size="small" type="primary" @click="viewDetail(course.courseId)">查看详情</el-button>
                 </div>
               </div>
@@ -56,7 +56,7 @@
                 <p class="card-meta">{{ course.category }} | {{ course.totalHours }}课时</p>
                 <p class="card-time">提交时间：{{ formatTime(course.updateTime) }}</p>
                 <div class="card-actions">
-                  <el-button size="small" @click="editCourse(course.courseId)">编辑</el-button>
+                  <el-button size="small" type="warning" @click="editCourse(course.courseId)">编辑</el-button>
                 </div>
               </div>
             </div>
@@ -78,7 +78,7 @@
                 <p class="card-meta">{{ course.category }} | {{ course.totalHours }}课时</p>
                 <p class="card-time">更新时间：{{ formatTime(course.updateTime) }}</p>
                 <div class="card-actions">
-                  <el-button size="small" @click="editCourse(course.courseId)">编辑</el-button>
+                  <el-button size="small" type="warning" @click="editCourse(course.courseId)">编辑</el-button>
                   <el-button size="small" type="primary" @click="submitReview(course.courseId)">提交审核</el-button>
                   <el-button size="small" type="danger" @click="deleteCourse(course)">删除</el-button>
                 </div>
@@ -103,7 +103,7 @@
                 <p class="card-reason" v-if="course.reviewComment">驳回原因：{{ course.reviewComment }}</p>
                 <p class="card-time">更新时间：{{ formatTime(course.updateTime) }}</p>
                 <div class="card-actions">
-                  <el-button size="small" @click="editCourse(course.courseId)">编辑修改</el-button>
+                  <el-button size="small" type="warning" @click="editCourse(course.courseId)">编辑修改</el-button>
                   <el-button size="small" type="primary" @click="submitReview(course.courseId)">重新提交</el-button>
                   <el-button size="small" type="danger" @click="deleteCourse(course)">删除</el-button>
                 </div>

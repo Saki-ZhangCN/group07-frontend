@@ -88,3 +88,18 @@ export function resetPassword(data) {
   })
 }
 
+/**
+ * 上传头像
+ * @param {File} file - 头像文件
+ * @returns {Promise} 上传结果
+ */
+export function uploadAvatar(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/auth/avatar',
+    method: 'post',
+    data: formData
+  })
+}
+

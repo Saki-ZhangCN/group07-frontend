@@ -22,7 +22,7 @@ export function resourceUrl(path) {
 }
 
 export function courseCoverUrl(path) {
-  return resourceUrl(path || '/uploads/default-image.jpg')
+  return resourceUrl(path || '/uploads/course-covers/default-image.jpg')
 }
 
 export function useFallbackCover(event) {

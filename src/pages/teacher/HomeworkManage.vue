@@ -1,30 +1,105 @@
 <template>
   <div class="homework-manage">
-    <div class="manage-header">
-      <h1>作业管理</h1>
-      <el-button type="primary" @click="openCreate">发布作业</el-button>
+    <div class="manage-container">
+      <!-- 左侧课程导航 -->
+      <aside class="course-sidebar">
+        <div class="sidebar-header">
+          <h3>课程列表</h3>
+          <el-input v-model="courseSearch" placeholder="搜索课程" size="small" clearable />
+        </div>
+        <div class="course-list">
+          <div class="course-item" :class="{ active: selectedCourseId === '' }" @click="selectCourse('')">
+            <el-icon><FolderOpened /></el-icon>
+            <span>全部课程</span>
+            <el-tag size="small" type="info">{{ allCourseCount }}</el-tag>
+          </div>
+          <div v-for="course in filteredCourses" :key="course.courseId" class="course-item"
+            :class="{ active: selectedCourseId === course.courseId }" @click="selectCourse(course.courseId)">
+            <el-icon><FolderOpened /></el-icon>
+            <span class="course-name">{{ course.courseName }}</span>
+            <el-tag size="small" type="info">{{ course.homeworkCount || 0 }}</el-tag>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 右侧内容区 -->
+      <section class="content-area">
+        <div class="content-header">
+          <h1>{{ selectedCourseName || '全部课程' }} - 作业管理</h1>
+          <el-button type="primary" @click="openCreate">发布作业</el-button>
+        </div>
+
+        <!-- 标签页切换 -->
+        <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+          <el-tab-pane label="作业列表" name="list">
+            <!-- 排序栏 -->
+            <div class="sort-bar">
+              <span class="sort-label">排序：</span>
+              <el-radio-group v-model="sortOrder" size="small" @change="sortHomework">
+                <el-radio-button value="deadline">按截止时间</el-radio-button>
+                <el-radio-button value="createTime">按创建时间</el-radio-button>
+                <el-radio-button value="title">按标题</el-radio-button>
+              </el-radio-group>
+            </div>
+
+            <div class="homework-list">
+              <div class="homework-card" v-for="hw in sortedHomeworks" :key="hw.id" @click="openReviewed(hw)">
+                <div class="card-header">
+                  <h3>{{ hw.title }}</h3>
+                  <span class="status-tag" :class="hw.status">{{ getStatusLabel(hw.status) }}</span>
+                </div>
+                <p class="course-name">{{ hw.courseName }}</p>
+                <div class="card-meta">
+                  <span><el-icon><Clock /></el-icon> {{ formatDate(hw.deadline) }}</span>
+                  <span><el-icon><Document /></el-icon> {{ hw.questionCount }}道题</span>
+                  <span><el-icon><Trophy /></el-icon> {{ hw.totalScore }}分</span>
+                  <span>
+                    <el-icon><User /></el-icon> 提交 {{ hw.submittedCount || 0 }}/{{ hw.totalStudents || 0 }}
+                  </span>
+                  <span v-if="hw.pendingCount > 0" class="pending-badge">
+                    待批改 {{ hw.pendingCount }}
+                  </span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" size="small" @click.stop="editHomework(hw)" v-if="hw.status === 'draft'">编辑</el-button>
+                  <el-button size="small" @click.stop="publishHomework(hw)" v-if="hw.status === 'draft'">发布</el-button>
+                  <el-button type="danger" size="small" @click.stop="remove(hw.id)">删除</el-button>
+                </div>
+              </div>
+              <div v-if="sortedHomeworks.length === 0" class="empty-state">
+                <p>暂无作业，请选择课程后发布</p>
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="待批改" name="grade">
+            <div class="grade-list">
+              <el-table :data="submissions" empty-text="暂无待批改作业">
+                <el-table-column label="学员" prop="studentName" />
+                <el-table-column label="作业" prop="homeworkTitle" />
+                <el-table-column label="课程" prop="courseName" />
+                <el-table-column label="提交时间" prop="submitTime" />
+                <el-table-column label="状态" prop="status">
+                  <template #default="scope">
+                    <el-tag :type="scope.row.status === 'submitted' ? 'warning' : 'info'" size="small">
+                      {{ scope.row.status === 'submitted' ? '待批改' : '批改中' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作">
+                  <template #default="scope">
+                    <el-button type="primary" size="small" @click="viewDetail(scope.row)">查看详情</el-button>
+                    <el-button type="warning" size="small" @click="grade(scope.row)">批改</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+      </section>
     </div>
-    
-    <div class="homework-list">
-      <div class="homework-card" v-for="hw in homeworks" :key="hw.id">
-        <div class="card-header">
-          <h3>{{ hw.title }}</h3>
-          <span class="status-tag" :class="hw.status">{{ getStatusLabel(hw.status) }}</span>
-        </div>
-        <p class="course-name">{{ hw.course }}</p>
-        <div class="card-meta">
-          <span><el-icon><Clock /></el-icon> {{ formatDate(hw.deadline) }}</span>
-          <span><el-icon><Document /></el-icon> {{ hw.questionCount }}道题</span>
-          <span><el-icon><Score /></el-icon> {{ hw.totalScore }}分</span>
-        </div>
-        <div class="card-actions">
-          <el-button type="primary" size="small" @click="editHomework(hw)" v-if="hw.status === 'draft'">编辑</el-button>
-          <el-button size="small" @click="publishHomework(hw)" v-if="hw.status === 'draft'">发布</el-button>
-          <el-button type="danger" size="small" @click="remove(hw.id)">删除</el-button>
-        </div>
-      </div>
-    </div>
-    
+
+    <!-- 发布/编辑作业弹窗 -->
     <el-dialog v-model="showCreateForm" title="从分类题库组卷并发布" width="900px" destroy-on-close>
       <el-form :model="form" label-width="100px">
         <el-form-item label="课程" required>
@@ -43,10 +118,11 @@
           <el-date-picker v-model="form.deadline" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择截止日期" />
         </el-form-item>
         <el-form-item label="总分">
-          <el-input-number v-model="form.totalScore" :min="1" :max="1000" />
+          <el-input-number v-model="form.totalScore" :min="100" :max="100" disabled />
+          <span class="fixed-score-tip">作业总分固定为 100 分</span>
         </el-form-item>
         <el-form-item label="及格分">
-          <el-input-number v-model="form.passScore" :min="0" :max="1000" />
+          <el-input-number v-model="form.passScore" :min="0" :max="100" />
         </el-form-item>
         <el-form-item label="筛选习题" v-if="form.courseId">
           <div class="question-filters">
@@ -68,9 +144,8 @@
               <el-table-column prop="knowledgePoint" label="知识点" width="110" />
               <el-table-column label="题型" width="85"><template #default="scope">{{ typeLabel(scope.row.type) }}</template></el-table-column>
               <el-table-column label="难度" width="80"><template #default="scope"><el-tag :type="difficultyType(scope.row.difficulty)" size="small">{{ difficultyLabel(scope.row.difficulty) }}</el-tag></template></el-table-column>
-              <el-table-column prop="score" label="分值" width="65" />
             </el-table>
-            <div class="selection-summary">已选 {{ form.exerciseIds.length }} 题，题库原始总分 {{ selectedScore }} 分</div>
+            <div class="selection-summary">已选 {{ form.exerciseIds.length }} 题</div>
           </div>
         </el-form-item>
       </el-form>
@@ -80,66 +155,289 @@
         <el-button type="success" @click="submitAndPublish">保存并发布</el-button>
       </template>
     </el-dialog>
+
+    <!-- 查看详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="作业详情" width="800px">
+      <div v-if="detail" class="detail-content">
+        <div class="detail-header">
+          <span class="student-name">学员：{{ detail.studentName }}</span>
+          <span class="homework-title">作业：{{ detail.homeworkTitle }}</span>
+          <span class="submit-time">提交时间：{{ detail.submitTime }}</span>
+          <span class="total-score">总分：{{ detail.totalScore }}分</span>
+        </div>
+        <div class="answers-list">
+          <div v-for="(answer, index) in detail.answers" :key="answer.answerId" class="answer-item">
+            <div class="answer-header">
+              <span class="answer-number">{{ index + 1 }}.</span>
+              <span class="answer-type">{{ getQuestionTypeName(answer.type) }}</span>
+              <span class="answer-score">（{{ answer.fullScore || 10 }}分）</span>
+            </div>
+            <div class="question-content">{{ answer.content }}</div>
+            <div class="answer-content">
+              <span class="label">学生答案：</span>
+              <span class="value">{{ answer.answer || '未作答' }}</span>
+            </div>
+            <div v-if="answer.standardAnswer" class="standard-answer">
+              <span class="label">标准答案：</span>
+              <span class="value">{{ answer.standardAnswer }}</span>
+            </div>
+            <div v-if="answer.teacherComment" class="teacher-comment">
+              <span class="label">教师点评：</span>
+              <span class="value">{{ answer.teacherComment }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 已批改作业查看弹窗 -->
+    <el-dialog v-model="reviewedVisible" title="已批改作业查看" width="860px">
+      <div class="review-toolbar">
+        <el-input
+          v-model="reviewStudentKeyword"
+          placeholder="搜索学员姓名/学号"
+          clearable
+          @keyup.enter="loadReviewedSubmissions"
+          @clear="loadReviewedSubmissions"
+        />
+        <el-button type="primary" @click="loadReviewedSubmissions">筛选</el-button>
+        <span class="review-count">当前作业已批改 {{ reviewedSubmissions.length }} 份</span>
+      </div>
+      <div v-if="reviewedData" class="grade-content">
+        <div class="grade-header">
+          <span class="student-name">当前学员：{{ reviewedData.studentName }}</span>
+          <span class="homework-title">作业：{{ reviewedData.homeworkTitle }}</span>
+          <span class="total-score">得分：{{ reviewedData.score ?? 0 }}/{{ reviewedData.totalScore }}分</span>
+        </div>
+        <div class="answers-list">
+          <div v-for="(answer, index) in reviewedData.answers" :key="answer.answerId" class="answer-item">
+            <div class="answer-header">
+              <span class="answer-number">{{ index + 1 }}.</span>
+              <span class="answer-type">{{ getQuestionTypeName(answer.type) }}</span>
+              <span class="answer-score">（{{ answer.fullScore || 10 }}分）</span>
+            </div>
+            <div class="question-content">{{ answer.content }}</div>
+            <div class="answer-content">
+              <span class="label">学生答案：</span>
+              <span class="value">{{ answer.answer || '未作答' }}</span>
+            </div>
+            <div v-if="answer.standardAnswer" class="standard-answer">
+              <span class="label">标准答案：</span>
+              <span class="value">{{ answer.standardAnswer }}</span>
+            </div>
+            <div class="grade-input">
+              <div class="grade-input-row">
+                <span class="label">本题得分：{{ answer.score || 0 }} 分</span>
+              </div>
+              <div v-if="answer.teacherComment" class="grade-input-row">
+                <span class="label">教师点评：</span>
+                <span class="value">{{ answer.teacherComment }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grade-comment" v-if="reviewedData.comment">
+          <span class="label">整体评语：</span>
+          <p class="review-comment">{{ reviewedData.comment }}</p>
+        </div>
+      </div>
+      <el-empty v-else description="暂无已批改提交" />
+      <template #footer>
+        <el-button @click="reviewedVisible = false">关闭</el-button>
+        <el-button type="primary" :disabled="reviewedSubmissions.length <= 1" @click="nextReviewed">下一份</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 批改弹窗 -->
+    <el-dialog v-model="gradeVisible" title="批改作业" width="800px">
+      <div v-if="gradeData" class="grade-content">
+        <div class="grade-header">
+          <span class="student-name">学员：{{ gradeData.studentName }}</span>
+          <span class="homework-title">作业：{{ gradeData.homeworkTitle }}</span>
+          <span class="total-score">总分：{{ gradeData.totalScore }}分</span>
+        </div>
+        <div class="answers-list">
+          <div v-for="(answer, index) in gradeData.answers" :key="answer.answerId" class="answer-item">
+            <div class="answer-header">
+              <span class="answer-number">{{ index + 1 }}.</span>
+              <span class="answer-type">{{ getQuestionTypeName(answer.type) }}</span>
+              <span class="answer-score">（{{ answer.fullScore || 10 }}分）</span>
+            </div>
+            <div class="question-content">{{ answer.content }}</div>
+            <div class="answer-content">
+              <span class="label">学生答案：</span>
+              <span class="value">{{ answer.answer || '未作答' }}</span>
+            </div>
+            <div v-if="answer.standardAnswer" class="standard-answer">
+              <span class="label">标准答案：</span>
+              <span class="value">{{ answer.standardAnswer }}</span>
+            </div>
+            <div v-if="isSubjective(answer.type)" class="grade-input">
+              <div class="grade-input-row">
+                <span class="label">得分：</span>
+                <el-input-number v-model="answer.score" :min="0" :max="answer.fullScore || 100" :step="10" size="small" />
+                <el-button size="small" type="default" @click="answer.score = 0">0分</el-button>
+                <el-button size="small" type="primary" @click="answer.score = answer.fullScore || 100">满分</el-button>
+              </div>
+              <div class="grade-input-row">
+                <span class="label">点评：</span>
+                <el-input v-model="answer.teacherComment" type="textarea" :rows="2" placeholder="请输入点评" style="flex: 1;" />
+              </div>
+            </div>
+            <div v-else class="grade-input">
+              <div class="grade-input-row">
+                <span class="label">本题得分：{{ answer.score || 0 }} 分</span>
+              </div>
+              <div class="grade-input-row">
+                <span class="label">点评：</span>
+                <el-input v-model="answer.teacherComment" type="textarea" :rows="2" placeholder="请输入点评（可选）" style="flex: 1;" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grade-summary">
+          <span class="summary-label">总得分：</span>
+          <span class="summary-value">{{ totalScore }}</span>
+        </div>
+        <div class="grade-comment">
+          <span class="label">整体评语：</span>
+          <el-input v-model="overallComment" type="textarea" :rows="3" placeholder="请输入整体评语（可选）" />
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="gradeVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitGrade">提交批改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { createHomework, deleteHomework, getHomeworkList, getHomeworkStats, getQuestionBank, updateHomework } from '../../api/homework.js'
+import { createHomework, deleteHomework, getHomeworkList, getPendingSubmissions, getQuestionBank, getSubmissionDetail, gradeSubmission, updateHomework } from '../../api/homework.js'
 import { getTeacherCourses } from '../../api/course.js'
 import { formatDate } from '../../utils/date.js'
 
-const homeworks = ref([])
+// 课程导航
 const courses = ref([])
-const exercises = ref([])
+const selectedCourseId = ref('')
+const courseSearch = ref('')
+const allCourseCount = ref(0)
+
+const filteredCourses = computed(() => {
+  if (!courseSearch.value) return courses.value
+  const keyword = courseSearch.value.toLowerCase()
+  return courses.value.filter(c => c.courseName.toLowerCase().includes(keyword))
+})
+
+const selectedCourseName = computed(() => {
+  if (!selectedCourseId.value) return ''
+  return courses.value.find(c => c.courseId === selectedCourseId.value)?.courseName || ''
+})
+
+// 作业列表
+const homeworks = ref([])
+const sortOrder = ref('deadline')
+
+const sortedHomeworks = computed(() => {
+  const list = [...homeworks.value]
+  if (sortOrder.value === 'deadline') {
+    list.sort((a, b) => new Date(a.deadline || 0) - new Date(b.deadline || 0))
+  } else if (sortOrder.value === 'createTime') {
+    list.sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0))
+  } else {
+    list.sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+  }
+  return list
+})
+
+// 标签页
+const activeTab = ref('list')
+
+// 发布作业
 const showCreateForm = ref(false)
-const statsMap = ref({})
+const exercises = ref([])
 const questionLoading = ref(false)
 const questionCategory = ref('')
 const filters = ref({ difficulty: '', type: '', keyword: '' })
-
 const form = ref({
-  courseId: '',
-  title: '',
-  description: '',
-  deadline: '',
-  totalScore: 100,
-  passScore: 60,
-  exerciseIds: []
+  courseId: '', title: '', description: '', deadline: '',
+  totalScore: 100, passScore: 60, exerciseIds: []
 })
-const selectedScore = computed(() => exercises.value.filter(item => form.value.exerciseIds.includes(item.id)).reduce((sum, item) => sum + Number(item.score || 0), 0))
 
+// 批改
+const submissions = ref([])
+const detailVisible = ref(false)
+const gradeVisible = ref(false)
+const reviewedVisible = ref(false)
+const detail = ref(null)
+const gradeData = ref(null)
+const overallComment = ref('')
+const reviewedHomework = ref(null)
+const reviewedSubmissions = ref([])
+const reviewedData = ref(null)
+const reviewedIndex = ref(0)
+const reviewStudentKeyword = ref('')
+
+const totalScore = computed(() => {
+  if (!gradeData.value?.answers) return 0
+  return gradeData.value.answers.reduce((sum, answer) => sum + (answer.score || 0), 0)
+})
+
+// 工具函数
 function getStatusLabel(status) {
-  const labels = {
-    'draft': '草稿',
-    'published': '已发布',
-    'closed': '已结束'
-  }
-  return labels[status] || status
+  return { draft: '草稿', published: '已发布', closed: '已结束' }[status] || status
+}
+function difficultyLabel(value) { return { easy: '简单', medium: '中等', hard: '困难' }[value] || value }
+function difficultyType(value) { return { easy: 'success', medium: 'warning', hard: 'danger' }[value] || 'info' }
+function typeLabel(value) { return { single: '单选', multiple: '多选', judge: '判断', blank: '填空', short: '简答' }[value] || value }
+function isSubjective(type) { return !['single', 'multiple', 'judge'].includes(type) }
+function getQuestionTypeName(type) {
+  return { single: '单选题', multiple: '多选题', judge: '判断题', fill: '填空题', blank: '填空题', essay: '问答题', short: '简答题' }[type] || type
 }
 
+// 课程选择
+function selectCourse(courseId) {
+  selectedCourseId.value = courseId
+  load()
+  if (activeTab.value === 'grade') loadSubmissions()
+}
+
+// 加载数据
 async function load() {
-  const data = await getHomeworkList({ page: 1, size: 100, role: 'teacher' })
+  const params = { page: 1, size: 100, role: 'teacher' }
+  if (selectedCourseId.value) params.courseId = selectedCourseId.value
+  const data = await getHomeworkList(params)
   homeworks.value = data.records || []
-  await loadStats()
-}
-
-async function loadStats() {
-  statsMap.value = {}
-  for (const hw of homeworks.value) {
-    try {
-      const stats = await getHomeworkStats(hw.id)
-      statsMap.value[hw.id] = stats
-    } catch (e) {
-      statsMap.value[hw.id] = null
-    }
+  if (activeTab.value === 'grade') {
+    await loadSubmissions()
   }
 }
 
 async function loadCourses() {
-  const data = await getTeacherCourses()
-  courses.value = data.courses || []
+  const data = await getTeacherCourses({ page: 1, size: 100, status: 'online' })
+  courses.value = (data.courses || []).map(c => ({ ...c, homeworkCount: 0 }))
+  allCourseCount.value = 0
+  const counts = await Promise.all(
+    courses.value.map(course =>
+      getHomeworkList({ page: 1, size: 1, role: 'teacher', courseId: course.courseId })
+        .then(hwData => ({ courseId: course.courseId, count: hwData.total || 0 }))
+        .catch(() => ({ courseId: course.courseId, count: 0 }))
+    )
+  )
+  for (const { courseId, count } of counts) {
+    const course = courses.value.find(c => c.courseId === courseId)
+    if (course) course.homeworkCount = count
+    allCourseCount.value += count
+  }
+}
+
+async function loadSubmissions() {
+  const params = { page: 1, size: 100, status: 'pending' }
+  if (selectedCourseId.value) params.courseId = selectedCourseId.value
+  const data = await getPendingSubmissions(params)
+  submissions.value = data.records || []
 }
 
 async function loadExercises() {
@@ -152,12 +450,22 @@ async function loadExercises() {
   } finally { questionLoading.value = false }
 }
 
+function handleTabChange(tab) {
+  if (tab === 'grade') loadSubmissions()
+}
+
+function sortHomework() {
+  // sortedHomeworks 是 computed，自动响应
+}
+
+// 发布作业
 function openCreate() {
-  form.value = { courseId: '', title: '', description: '', deadline: '', totalScore: 100, passScore: 60, exerciseIds: [] }
+  form.value = { courseId: selectedCourseId.value || '', title: '', description: '', deadline: '', totalScore: 100, passScore: 60, exerciseIds: [] }
   exercises.value = []
   questionCategory.value = ''
   filters.value = { difficulty: '', type: '', keyword: '' }
   showCreateForm.value = true
+  if (form.value.courseId) loadExercises()
 }
 
 async function handleCourseChange() {
@@ -167,9 +475,6 @@ async function handleCourseChange() {
 }
 
 function handleSelectionChange(rows) { form.value.exerciseIds = rows.map(item => item.id) }
-function difficultyLabel(value) { return ({ easy: '简单', medium: '中等', hard: '困难' })[value] || value }
-function difficultyType(value) { return ({ easy: 'success', medium: 'warning', hard: 'danger' })[value] || 'info' }
-function typeLabel(value) { return ({ single: '单选', multiple: '多选', judge: '判断', blank: '填空', short: '简答' })[value] || value }
 
 async function remove(id) {
   await ElMessageBox.confirm('确定删除该作业吗？', '提示', { type: 'warning' })
@@ -180,13 +485,8 @@ async function remove(id) {
 
 function editHomework(hw) {
   form.value = {
-    courseId: hw.courseId || '',
-    title: hw.title,
-    description: hw.description || '',
-    deadline: hw.deadline || '',
-    totalScore: hw.totalScore || 100,
-    passScore: hw.passScore || 60,
-    exerciseIds: []
+    courseId: hw.courseId || '', title: hw.title, description: hw.description || '',
+    deadline: hw.deadline || '', totalScore: 100, passScore: hw.passScore || 60, exerciseIds: []
   }
   loadExercises()
   showCreateForm.value = true
@@ -194,7 +494,7 @@ function editHomework(hw) {
 
 async function submitForm() {
   if (!validateForm()) return
-  await createHomework({ ...form.value, status: 'draft' })
+  await createHomework({ ...form.value, totalScore: 100, status: 'draft' })
   showCreateForm.value = false
   await load()
   ElMessage.success('保存草稿成功')
@@ -203,7 +503,7 @@ async function submitForm() {
 async function submitAndPublish() {
   if (!validateForm()) return
   await ElMessageBox.confirm(`确认向《${courses.value.find(c => c.courseId === form.value.courseId)?.courseName}》的选课学生发布 ${form.value.exerciseIds.length} 道题吗？`, '发布确认', { type: 'warning' })
-  await createHomework({ ...form.value, status: 'published' })
+  await createHomework({ ...form.value, totalScore: 100, status: 'published' })
   showCreateForm.value = false
   await load()
   ElMessage.success('作业发布成功')
@@ -214,6 +514,8 @@ function validateForm() {
   if (!form.value.title.trim()) { ElMessage.warning('请输入作业标题'); return false }
   if (!form.value.deadline) { ElMessage.warning('请选择截止时间'); return false }
   if (!form.value.exerciseIds.length) { ElMessage.warning('请至少选择一道题'); return false }
+  if (form.value.passScore < 0 || form.value.passScore > 100) { ElMessage.warning('及格分必须在 0-100 分之间'); return false }
+  form.value.totalScore = 100
   return true
 }
 
@@ -221,6 +523,68 @@ async function publishHomework(hw) {
   await updateHomework(hw.id, { status: 'published' })
   await load()
   ElMessage.success('作业发布成功')
+}
+
+// 批改
+async function viewDetail(row) {
+  detail.value = await getSubmissionDetail(row.submissionId)
+  detailVisible.value = true
+}
+
+async function grade(row) {
+  gradeData.value = JSON.parse(JSON.stringify(await getSubmissionDetail(row.submissionId)))
+  overallComment.value = ''
+  gradeVisible.value = true
+}
+
+async function openReviewed(hw) {
+  reviewedHomework.value = hw
+  reviewStudentKeyword.value = ''
+  reviewedIndex.value = 0
+  reviewedVisible.value = true
+  await loadReviewedSubmissions()
+}
+
+async function loadReviewedSubmissions() {
+  if (!reviewedHomework.value) return
+  const params = {
+    page: 1,
+    size: 100,
+    status: 'graded',
+    homeworkId: reviewedHomework.value.id
+  }
+  if (selectedCourseId.value) params.courseId = selectedCourseId.value
+  if (reviewStudentKeyword.value.trim()) params.studentKeyword = reviewStudentKeyword.value.trim()
+  const data = await getPendingSubmissions(params)
+  reviewedSubmissions.value = data.records || []
+  reviewedIndex.value = 0
+  await loadReviewedCurrent()
+}
+
+async function loadReviewedCurrent() {
+  const current = reviewedSubmissions.value[reviewedIndex.value]
+  reviewedData.value = current ? await getSubmissionDetail(current.submissionId) : null
+}
+
+async function nextReviewed() {
+  if (!reviewedSubmissions.value.length) return
+  reviewedIndex.value = (reviewedIndex.value + 1) % reviewedSubmissions.value.length
+  await loadReviewedCurrent()
+}
+
+async function submitGrade() {
+  const subjectiveAnswers = gradeData.value.answers.filter(a => isSubjective(a.type))
+  const scores = {}
+  const comments = {}
+  subjectiveAnswers.forEach(a => { if (a.score !== undefined) scores[a.questionId] = a.score })
+  gradeData.value.answers.forEach(a => { if (a.teacherComment) comments[a.questionId] = a.teacherComment })
+  await gradeSubmission(gradeData.value.submissionId, {
+    score: totalScore.value, comment: overallComment.value || '教师已完成批改', scores, comments
+  })
+  ElMessage.success('批改完成')
+  gradeVisible.value = false
+  await loadSubmissions()
+  await load()
 }
 
 onMounted(() => {
@@ -232,25 +596,106 @@ onMounted(() => {
 <style scoped>
 .homework-manage {
   background: white;
-  padding: var(--spacing-xl);
   border-radius: var(--radius-xl);
+  overflow: hidden;
 }
 
-.manage-header { 
-  display:flex; 
-  align-items:center; 
-  justify-content:space-between; 
-  margin-bottom: var(--spacing-xl);
+.manage-container {
+  display: flex;
+  min-height: calc(100vh - 112px);
 }
 
-.homework-manage h1 {
+/* 左侧课程导航 */
+.course-sidebar {
+  width: 240px;
+  border-right: 1px solid var(--gray-100);
+  background: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.sidebar-header h3 {
+  font-size: var(--font-size-md);
+  color: var(--gray-800);
+  margin-bottom: var(--spacing-md);
+}
+
+.course-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+}
+
+.course-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--gray-600);
+  font-size: var(--font-size-sm);
+}
+
+.course-item:hover {
+  background: var(--gray-100);
+}
+
+.course-item.active {
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--primary-500);
+}
+
+.course-item .course-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 右侧内容区 */
+.content-area {
+  flex: 1;
+  padding: var(--spacing-xl);
+  overflow-y: auto;
+}
+
+.content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-lg);
+}
+
+.content-header h1 {
   font-size: var(--font-size-xl);
   color: var(--gray-800);
 }
 
+/* 排序栏 */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.sort-label {
+  font-size: var(--font-size-sm);
+  color: var(--gray-500);
+}
+
+/* 作业列表 */
 .homework-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: var(--spacing-lg);
 }
 
@@ -258,6 +703,12 @@ onMounted(() => {
   padding: var(--spacing-lg);
   border: 1px solid var(--gray-100);
   border-radius: var(--radius-lg);
+  transition: box-shadow var(--transition-fast);
+  cursor: pointer;
+}
+
+.homework-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .card-header {
@@ -278,20 +729,9 @@ onMounted(() => {
   border-radius: var(--radius-full);
 }
 
-.status-tag.draft {
-  background: rgba(249, 115, 22, 0.1);
-  color: var(--accent-orange);
-}
-
-.status-tag.published {
-  background: rgba(34, 197, 94, 0.1);
-  color: var(--green-500);
-}
-
-.status-tag.closed {
-  background: rgba(107, 114, 128, 0.1);
-  color: var(--gray-500);
-}
+.status-tag.draft { background: rgba(249, 115, 22, 0.1); color: var(--accent-orange); }
+.status-tag.published { background: rgba(34, 197, 94, 0.1); color: var(--green-500); }
+.status-tag.closed { background: rgba(107, 114, 128, 0.1); color: var(--gray-500); }
 
 .course-name {
   color: var(--gray-500);
@@ -308,12 +748,104 @@ onMounted(() => {
   margin-bottom: var(--spacing-lg);
 }
 
+.pending-badge {
+  color: var(--accent-orange);
+  font-weight: 500;
+}
+
 .card-actions {
   display: flex;
   gap: var(--spacing-sm);
 }
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--spacing-3xl);
+  color: var(--gray-400);
+}
+
+/* 弹窗通用 */
 .category-tag { margin-left: 12px; }
-.question-filters { display:grid; grid-template-columns:120px 120px 1fr auto; gap:10px; width:100%; }
-.question-picker { width:100%; }
-.selection-summary { margin-top:10px; color:var(--gray-600); text-align:right; }
+.fixed-score-tip { margin-left: 12px; color: var(--gray-500); font-size: var(--font-size-sm); }
+.question-filters { display: grid; grid-template-columns: 120px 120px 1fr auto; gap: 10px; width: 100%; }
+.question-picker { width: 100%; }
+.selection-summary { margin-top: 10px; color: var(--gray-600); text-align: right; }
+
+/* 详情/批改弹窗 */
+.detail-content, .grade-content { padding: var(--spacing-lg); }
+.detail-header, .grade-header {
+  display: flex; flex-wrap: wrap; gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg); padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--gray-100);
+}
+.detail-header span, .grade-header span {
+  font-size: var(--font-size-sm); color: var(--gray-600);
+}
+.student-name, .homework-title, .submit-time, .total-score {
+  background: var(--gray-50); padding: 4px 12px; border-radius: var(--radius-md);
+}
+.answers-list { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+.answer-item {
+  padding: var(--spacing-lg); background: var(--gray-50); border-radius: var(--radius-lg);
+}
+.answer-header {
+  display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md);
+}
+.answer-number { font-weight: 600; color: var(--primary-500); }
+.answer-type {
+  font-size: var(--font-size-xs); padding: 4px 12px;
+  background: var(--primary-50); color: var(--primary-500); border-radius: var(--radius-full);
+}
+.answer-score { color: var(--gray-500); font-size: var(--font-size-sm); }
+.question-content { font-size: var(--font-size-base); color: var(--gray-800); margin-bottom: var(--spacing-md); }
+.answer-content, .standard-answer, .teacher-comment {
+  display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm);
+}
+.answer-content .label, .standard-answer .label, .teacher-comment .label {
+  font-weight: 500; color: var(--gray-600); font-size: var(--font-size-sm);
+}
+.answer-content .value, .standard-answer .value, .teacher-comment .value {
+  color: var(--gray-800); font-size: var(--font-size-sm); word-break: break-word;
+}
+.standard-answer .value { color: var(--green-500); }
+.grade-input {
+  margin-top: var(--spacing-md); padding: var(--spacing-md);
+  background: white; border-radius: var(--radius-md);
+}
+.grade-input-row {
+  display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm);
+}
+.grade-input .label {
+  font-weight: 500; color: var(--gray-600); font-size: var(--font-size-sm); margin-right: var(--spacing-sm);
+}
+.grade-summary {
+  display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing-md);
+  margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--gray-100);
+}
+.summary-label { font-weight: 500; color: var(--gray-600); }
+.summary-value { font-size: var(--font-size-xl); font-weight: 600; color: var(--primary-500); }
+.grade-comment { margin-top: var(--spacing-md); }
+.grade-comment .label {
+  font-weight: 500; color: var(--gray-600); font-size: var(--font-size-sm); display: block; margin-bottom: var(--spacing-sm);
+}
+.review-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) auto 1fr;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+.review-count {
+  color: var(--gray-500);
+  font-size: var(--font-size-sm);
+}
+.review-comment {
+  margin: 0;
+  padding: var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  color: var(--gray-700);
+  line-height: 1.6;
+}
 </style>

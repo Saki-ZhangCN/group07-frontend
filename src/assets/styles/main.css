@@ -572,6 +572,11 @@ a:hover {
   color: white !important;
 }
 
+.sidebar.collapsed .el-menu-item.is-active {
+  margin: 4px 0 !important;
+  width: 100% !important;
+}
+
 .el-pagination.is-background .el-pager li:not(.disabled).active {
   background: var(--primary-500) !important;
 }

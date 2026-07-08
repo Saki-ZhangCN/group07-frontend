@@ -10,8 +10,8 @@
         </el-select>
         
         <el-select v-model="statusFilter" placeholder="状态" clearable @change="handleFilterChange">
-          <el-option label="正常" value="normal" />
-          <el-option label="禁用" value="disabled" />
+          <el-option label="正常" value="1" />
+          <el-option label="禁用" value="0" />
         </el-select>
         
         <el-input
@@ -21,15 +21,15 @@
           clearable
           @keyup.enter="handleSearch"
         />
-        <el-button type="primary" @click="handleSearch">搜索</el-button>
+        <el-button type="primary" size="small" @click="handleSearch">搜索</el-button>
       </div>
       
       <div class="actions">
-        <el-button @click="exportData">
+        <el-button size="small" @click="exportData">
           <el-icon><Download /></el-icon>
           导出
         </el-button>
-        <el-button type="primary" @click="createUser">
+        <el-button size="small" type="primary" @click="showCreateDialog">
           <el-icon><Plus /></el-icon>
           创建用户
         </el-button>
@@ -47,60 +47,60 @@
               </el-avatar>
               <div class="user-detail">
                 <span class="user-name">{{ row.realName || row.username }}</span>
-                <span class="user-email">{{ row.email }}</span>
+                <span class="user-email">{{ row.email || row.username }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
         
-        <el-table-column label="学工号" width="120">
+        <el-table-column label="学工号" min-width="100">
           <template #default="{ row }">
-            <span class="emp-no">{{ row.studentNo || row.teacherNo || row.adminNo || '-' }}</span>
+            <span class="emp-no">{{ row.empNo || '-' }}</span>
           </template>
         </el-table-column>
         
-        <el-table-column label="角色" width="100">
+        <el-table-column label="角色" min-width="80">
           <template #default="{ row }">
-            <span class="role-badge" :class="getRoleClass(row.role)">
+            <span class="role-badge" :class="row.role">
               {{ getRoleLabel(row.role) }}
             </span>
           </template>
         </el-table-column>
         
-        <el-table-column label="状态" width="80">
+        <el-table-column label="状态" min-width="70">
           <template #default="{ row }">
-            <span class="status-badge" :class="getStatusClass(row.status)">
-              {{ getStatusLabel(row.status) }}
+            <span class="status-badge" :class="row.status === 1 ? 'normal' : 'disabled'">
+              {{ row.status === 1 ? '正常' : '禁用' }}
             </span>
           </template>
         </el-table-column>
         
-        <el-table-column label="注册时间" width="120">
+        <el-table-column label="注册时间" min-width="100">
           <template #default="{ row }">
             {{ formatTime(row.createTime) }}
           </template>
         </el-table-column>
         
-        <el-table-column label="最后登录" width="120">
+        <el-table-column label="最后登录" min-width="100">
           <template #default="{ row }">
             {{ formatTime(row.lastLoginTime) }}
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" min-width="230" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button size="small" link @click="editUser(row.userId)">编辑</el-button>
-              <el-button size="small" link @click="viewDetail(row.userId)">详情</el-button>
+              <el-button size="small" type="primary" @click="viewDetail(row)">详情</el-button>
+              <el-button size="small" type="warning" @click="showEditDialog(row)">编辑</el-button>
               <el-button 
                 size="small" 
-                link 
+                class="toggle-btn"
                 :type="row.status === 1 ? 'warning' : 'success'"
                 @click="toggleStatus(row)"
               >
                 {{ row.status === 1 ? '禁用' : '启用' }}
               </el-button>
-              <el-button size="small" link type="danger" @click="deleteUser(row)">删除</el-button>
+              <el-button size="small" type="danger" @click="deleteUser(row)">删除</el-button>
             </div>
           </template>
         </el-table-column>
@@ -120,13 +120,78 @@
         @current-change="handlePageChange"
       />
     </div>
+
+    <!-- 创建用户对话框 -->
+    <el-dialog v-model="createDialogVisible" title="创建用户" width="420px">
+      <el-form :model="createForm" label-width="80px">
+        <el-form-item label="用户名">
+          <el-input v-model="createForm.username" placeholder="学号或工号" />
+        </el-form-item>
+        <el-form-item label="姓名">
+          <el-input v-model="createForm.realName" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-select v-model="createForm.role" style="width:100%">
+            <el-option label="学员" value="student" />
+            <el-option label="讲师" value="teacher" />
+            <el-option label="管理员" value="admin" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="createForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="createForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button size="small" @click="createDialogVisible = false">取消</el-button>
+        <el-button size="small" type="primary" @click="submitCreate">确认创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑用户对话框 -->
+    <el-dialog v-model="editDialogVisible" title="编辑用户" width="420px">
+      <el-form :model="editForm" label-width="80px">
+        <el-form-item label="姓名">
+          <el-input v-model="editForm.realName" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="editForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="editForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button size="small" type="danger" @click="handleResetPassword">重置密码</el-button>
+        <el-button size="small" @click="editDialogVisible = false">取消</el-button>
+        <el-button size="small" type="primary" @click="submitEdit">保存修改</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 用户详情对话框 -->
+    <el-dialog v-model="detailDialogVisible" title="用户详情" width="420px">
+      <div class="detail-section">
+        <div class="detail-row"><span class="label">用户ID</span><span>{{ detailUser.userId }}</span></div>
+        <div class="detail-row"><span class="label">用户名</span><span>{{ detailUser.username }}</span></div>
+        <div class="detail-row"><span class="label">姓名</span><span>{{ detailUser.realName || '-' }}</span></div>
+        <div class="detail-row"><span class="label">学工号</span><span>{{ detailUser.empNo || '-' }}</span></div>
+        <div class="detail-row"><span class="label">角色</span><span>{{ getRoleLabel(detailUser.role) }}</span></div>
+        <div class="detail-row"><span class="label">状态</span><span>{{ detailUser.status === 1 ? '正常' : '禁用' }}</span></div>
+        <div class="detail-row"><span class="label">邮箱</span><span>{{ detailUser.email || '-' }}</span></div>
+        <div class="detail-row"><span class="label">手机号</span><span>{{ detailUser.phone || '-' }}</span></div>
+        <div class="detail-row"><span class="label">注册时间</span><span>{{ formatTime(detailUser.createTime) }}</span></div>
+        <div class="detail-row"><span class="label">最后登录</span><span>{{ formatTime(detailUser.lastLoginTime) }}</span></div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { createUser as createUserApi, deleteUser as deleteUserApi, exportUsers, getUserList, updateUser } from '../../api/admin.js'
+import { createUser as createUserApi, deleteUser as deleteUserApi, exportUsers, getUserList, resetUserPassword, updateUser } from '../../api/admin.js'
 
 const roleFilter = ref('')
 const statusFilter = ref('')
@@ -135,6 +200,18 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const totalCount = ref(0)
 const users = ref([])
+
+// 创建对话框
+const createDialogVisible = ref(false)
+const createForm = reactive({ username: '', realName: '', role: 'student', email: '', phone: '' })
+
+// 编辑对话框
+const editDialogVisible = ref(false)
+const editForm = reactive({ userId: '', realName: '', email: '', phone: '', role: '', status: 1 })
+
+// 详情对话框
+const detailDialogVisible = ref(false)
+const detailUser = ref({})
 
 onMounted(() => {
   loadUsers()
@@ -147,7 +224,7 @@ async function loadUsers() {
       size: pageSize.value
     }
     if (roleFilter.value) params.role = roleFilter.value
-    if (statusFilter.value) params.status = statusFilter.value === 'normal' ? 1 : 0
+    if (statusFilter.value !== '') params.status = statusFilter.value
     if (searchKeyword.value) params.keyword = searchKeyword.value
     
     const data = await getUserList(params)
@@ -177,44 +254,82 @@ function getRoleLabel(role) {
   return map[role] || role
 }
 
-function getRoleClass(role) {
-  return role || ''
-}
-
-function getStatusLabel(status) {
-  return status === 1 ? '正常' : '禁用'
-}
-
-function getStatusClass(status) {
-  return status === 1 ? 'normal' : 'disabled'
-}
-
 function formatTime(time) {
   if (!time) return '-'
   return time.split('T')[0]
 }
 
-async function createUser() {
-  const { value: username } = await ElMessageBox.prompt('请输入学号或工号', '创建用户')
-  const { value: realName } = await ElMessageBox.prompt('请输入姓名', '创建用户')
-  await createUserApi({ username, realName, role: roleFilter.value || 'student' })
+// 创建用户
+function showCreateDialog() {
+  createForm.username = ''
+  createForm.realName = ''
+  createForm.role = 'student'
+  createForm.email = ''
+  createForm.phone = ''
+  createDialogVisible.value = true
+}
+
+async function submitCreate() {
+  if (!createForm.username || !createForm.realName) {
+    ElMessage.warning('请填写用户名和姓名')
+    return
+  }
+  await createUserApi(createForm)
   ElMessage.success('用户已创建，初始密码为账号+123456')
+  createDialogVisible.value = false
   await loadUsers()
 }
 
-async function editUser(id) {
-  const { value: phone } = await ElMessageBox.prompt('请输入新手机号', '编辑用户')
-  await updateUser(id, { phone })
+// 编辑用户
+function showEditDialog(row) {
+  editForm.userId = row.userId
+  editForm.realName = row.realName || ''
+  editForm.email = row.email || ''
+  editForm.phone = row.phone || ''
+  editForm.role = row.role || ''
+  editForm.status = row.status
+  editDialogVisible.value = true
+}
+
+async function submitEdit() {
+  await updateUser(editForm.userId, editForm)
   ElMessage.success('用户信息已更新')
+  editDialogVisible.value = false
   await loadUsers()
 }
 
-function viewDetail(id) {
-  const user = users.value.find(item => item.userId === id)
-  ElMessageBox.alert(JSON.stringify(user, null, 2), '用户详情')
+// 重置密码（双重确认）
+async function handleResetPassword() {
+  try {
+    await ElMessageBox.confirm('确定要重置该用户的密码吗？', '确认重置', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await ElMessageBox.confirm('重置后密码将恢复为默认值，此操作不可撤销，是否继续？', '二次确认', {
+      confirmButtonText: '确认重置',
+      cancelButtonText: '取消',
+      type: 'error'
+    })
+    await resetUserPassword(editForm.userId)
+    ElMessage.success('密码已重置')
+  } catch {
+    // 取消操作
+  }
 }
 
+// 查看详情
+function viewDetail(row) {
+  detailUser.value = row
+  detailDialogVisible.value = true
+}
+
+// 启用/禁用
 async function toggleStatus(user) {
+  if (user.username === '0001') {
+    ElMessage.warning('超级管理员0001不能被禁用')
+    return
+  }
   const action = user.status === 1 ? '禁用' : '启用'
   try {
     await ElMessageBox.confirm(`确定要${action}该用户吗？`, '提示', {
@@ -231,7 +346,12 @@ async function toggleStatus(user) {
   }
 }
 
+// 删除用户
 async function deleteUser(user) {
+  if (user.username === '0001') {
+    ElMessage.warning('超级管理员0001不能被删除')
+    return
+  }
   try {
     await ElMessageBox.confirm('确定要删除该用户吗？', '警告', {
       confirmButtonText: '确定',
@@ -246,6 +366,7 @@ async function deleteUser(user) {
   }
 }
 
+// 导出
 async function exportData() {
   const blob = await exportUsers({ role: roleFilter.value, keyword: searchKeyword.value })
   const url = URL.createObjectURL(blob)
@@ -269,11 +390,14 @@ async function exportData() {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
 }
 
 .filters {
   display: flex;
   gap: var(--spacing-md);
+  flex-wrap: wrap;
 }
 
 .filters .el-select {
@@ -358,12 +482,49 @@ async function exportData() {
 
 .action-buttons {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.action-buttons .toggle-btn.el-button--warning {
+  background-color: rgb(255, 228, 181);
+  border-color: rgb(255, 228, 181);
+  color: var(--warning-color, #e6a23c);
+}
+
+.action-buttons .toggle-btn.el-button--warning:hover {
+  background-color: rgb(255, 215, 150);
+  border-color: rgb(255, 215, 150);
 }
 
 .pagination-section {
   display: flex;
   justify-content: center;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-50);
+}
+
+.detail-row .label {
+  width: 80px;
+  font-size: var(--font-size-sm);
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
+
+.detail-row span:last-child {
+  font-size: var(--font-size-sm);
+  color: var(--gray-800);
 }
 
 @media (max-width: 767px) {

@@ -45,6 +45,18 @@ export function updateUser(id, data) {
 }
 
 /**
+ * 重置用户密码
+ * @param {string} id - 用户ID
+ * @returns {Promise} 重置结果
+ */
+export function resetUserPassword(id) {
+  return request({
+    url: `/admin/users/${id}/reset-password`,
+    method: 'post'
+  })
+}
+
+/**
  * 删除用户
  * @param {string} id - 用户ID
  * @returns {Promise} 删除结果
@@ -234,29 +246,5 @@ export function deleteQuestion(id) {
   return request({
     url: `/admin/questions/${id}`,
     method: 'delete'
-  })
-}
-
-/**
- * 获取系统配置
- * @returns {Promise} 配置数据
- */
-export function getSystemConfig() {
-  return request({
-    url: '/admin/system-config',
-    method: 'get'
-  })
-}
-
-/**
- * 更新系统配置
- * @param {Object} data - 配置数据
- * @returns {Promise} 更新结果
- */
-export function updateSystemConfig(data) {
-  return request({
-    url: '/admin/system-config',
-    method: 'put',
-    data
   })
 }

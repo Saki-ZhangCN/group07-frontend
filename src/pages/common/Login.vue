@@ -223,14 +223,8 @@ async function handleLogin() {
     }
     router.push(redirectMap[selectedRole.value])
     
-  } catch (error) {
-    if (error.response?.data?.code === 401) {
-      ElMessage.error('账号或密码错误')
-    } else if (error.message) {
-      ElMessage.error(error.message)
-    } else {
-      ElMessage.error('登录失败，请重试')
-    }
+  } catch {
+    // 错误信息已由请求拦截器统一处理
   } finally {
     loading.value = false
   }

@@ -16,17 +16,6 @@ export function getLearningReport() {
 }
 
 /**
- * 获取知识点掌握度
- * @returns {Promise} 掌握度数据
- */
-export function getKnowledgeMastery() {
-  return request({
-    url: '/analysis/knowledge-mastery',
-    method: 'get'
-  })
-}
-
-/**
  * 获取学习时长统计
  * @param {Object} params - 查询参数
  * @returns {Promise} 学习时长数据
@@ -85,17 +74,6 @@ export function getKnowledgeHeatmap(courseId) {
 export function getStudentDetail(studentId, courseId) {
   return request({
     url: `/analysis/student/${studentId}/course/${courseId}`,
-    method: 'get'
-  })
-}
-
-/**
- * 获取薄弱知识点推荐
- * @returns {Promise} 推荐数据
- */
-export function getWeakPointRecommendation() {
-  return request({
-    url: '/analysis/recommendation',
     method: 'get'
   })
 }
