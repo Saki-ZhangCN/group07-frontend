@@ -13,8 +13,8 @@
           </svg>
           <span class="progress-text">{{ overallProgress }}%</span>
         </div>
-        <p class="progress-label">宸插</p>
-        <button @click="goToCourseDetail" class="course-detail-btn">璇剧▼璇︽儏</button>
+        <p class="progress-label">已学</p>
+        <button @click="goToCourseDetail" class="course-detail-btn">课程详情</button>
       </div>
       <div class="chapter-list">
         <div v-for="section in sections" :key="section.sectionId" class="chapter-section">
@@ -66,7 +66,7 @@
       <template v-if="current">
         <div class="content-header">
           <h2>{{ current.sectionName }}</h2>
-          <h3>{{ current.chapterName }} 路 {{ current.title }}</h3>
+          <h3>{{ current.chapterName }} · {{ current.title }}</h3>
         </div>
         
         <div v-if="kind === 'video'" class="video-player-wrapper">
@@ -75,7 +75,7 @@
             @loadedmetadata="onVideoLoaded" @timeupdate="onVideoTimeUpdate"
             @seeking="onVideoSeeking" @seeked="onVideoSeeked"
             @play="onVideoPlay" @pause="onVideoPause" @ended="onVideoEnded">
-            鎮ㄧ殑娴忚鍣ㄤ笉鏀寔瑙嗛鎾斁
+            您的浏览器不支持视频播放
           </video>
         </div>
         
@@ -84,21 +84,22 @@
         <div class="content-footer">
           <button v-if="prevResource" @click="selectPrev" class="nav-btn prev-btn">
             <el-icon><ArrowLeft /></el-icon>
-            涓婁竴璧勬簮
+            上一资源
           </button>
           <button v-if="nextResource" @click="selectNext" class="nav-btn next-btn">
-            涓嬩竴璧勬簮
+            下一资源
             <el-icon><ArrowRight /></el-icon>
           </button>
           <button @click="toggleComments" class="comment-toggle-btn" :class="{ active: showComments }">
             <el-icon><ChatDotRound /></el-icon>
-            {{ commentCount }}鏉¤瘎璁?          </button>
+            {{ commentCount }}条评论
+          </button>
         </div>
       </template>
       
       <div v-else class="empty-state">
         <el-icon :size="48"><FolderOpened /></el-icon>
-        <p>璇烽€夋嫨涓€涓皬鑺傜殑瀛︿範璧勬簮</p>
+        <p>请选择一个小节的学习资源</p>
       </div>
     </main>
     
@@ -128,7 +129,7 @@
               </button>
               <button @click="handleReply(comment)" class="action-btn">
                 <el-icon><ChatLineRound /></el-icon>
-                鍥炲
+                回复
               </button>
             </div>
             
@@ -150,7 +151,7 @@
                     </button>
                     <button @click="handleReply(reply)" class="action-btn">
                       <el-icon><ChatLineRound /></el-icon>
-                      鍥炲
+                      回复
                     </button>
                   </div>
                 </div>
@@ -161,26 +162,26 @@
               <input 
                 v-model="replyContent" 
                 type="text" 
-                placeholder="杈撳叆鍥炲鍐呭..." 
+                placeholder="输入回复内容..." 
                 class="reply-input"
                 @keyup.enter="submitReply(comment.commentId)"
               />
               <button @click="submitReply(comment.commentId)" class="submit-reply-btn">发送</button>
-              <button @click="cancelReply" class="cancel-reply-btn">鍙栨秷</button>
+              <button @click="cancelReply" class="cancel-reply-btn">取消</button>
             </div>
           </div>
         </div>
         
         <div v-if="!comments.length" class="no-comments">
           <el-icon :size="48"><Message /></el-icon>
-          <p>鏆傛棤璇勮锛屾潵璇翠袱鍙ュ惂</p>
+          <p>暂无评论，来说两句吧</p>
         </div>
       </div>
       
       <div class="comments-footer">
         <textarea 
           v-model="newComment" 
-          placeholder="鍙戣〃璇勮..." 
+          placeholder="发表评论..." 
           class="comment-input"
           rows="3"
           maxlength="500"
@@ -188,7 +189,7 @@
         <div class="comment-submit-bar">
           <span class="char-count">{{ newComment.length }}/500</span>
           <button @click="submitComment" class="submit-btn" :disabled="!newComment.trim()">
-            鍙戣〃
+            发表
           </button>
         </div>
       </div>
@@ -234,7 +235,7 @@ const newComment = ref('')
 const replyingTo = ref('')
 const replyContent = ref('')
 
-// 瀛︿範鏃堕暱杩借釜
+// 学习时长追踪
 const studyAccumulatedSeconds = ref(0)
 const studyTimer = ref(null)
 const studyReportTimer = ref(null)
@@ -317,9 +318,9 @@ async function reportTime() {
       resourceId: currentResourceId.value || undefined,
       duration: seconds
     })
-    console.log(`瀛︿範鏃堕暱宸蹭笂鎶? ${seconds}绉? 绫诲瀷: ${kind.value}`)
+    console.log(`学习时长已上报：${seconds}秒，类型：${kind.value}`)
   } catch (error) {
-    console.error('瀛︿範鏃堕暱涓婃姤澶辫触:', error)
+    console.error('学习时长上报失败:', error)
     studyAccumulatedSeconds.value += seconds
   }
 }
@@ -443,7 +444,7 @@ async function markCurrentResourceComplete(resourceType) {
     completedKeys.value = new Set(data?.completedKeys || [])
     ElMessage.success(resourceType === 'video' ? '视频已完整学习' : '资料已计入学习进度')
   } catch (error) {
-    console.error('鏇存柊瀛︿範杩涘害澶辫触:', error)
+    console.error('更新学习进度失败:', error)
   }
 }
 
@@ -547,7 +548,7 @@ async function loadCommentCount() {
     const count = await getCommentCount(route.params.courseId)
     commentCount.value = Number(count || 0)
   } catch (error) {
-    console.error('鍔犺浇璇勮鏁伴噺澶辫触:', error)
+    console.error('加载评论数量失败:', error)
   }
 }
 
@@ -557,7 +558,7 @@ async function loadComments() {
     comments.value = data || []
     commentCount.value = comments.value.length
   } catch (error) {
-    console.error('鍔犺浇璇勮澶辫触:', error)
+    console.error('加载评论失败:', error)
   }
 }
 
@@ -569,12 +570,12 @@ async function submitComment() {
       courseId: route.params.courseId,
       content: newComment.value.trim()
     })
-    ElMessage.success('璇勮鍙戣〃鎴愬姛')
+    ElMessage.success('评论发表成功')
     newComment.value = ''
     await loadComments()
   } catch (error) {
-    ElMessage.error('璇勮鍙戣〃澶辫触')
-    console.error('鍙戣〃璇勮澶辫触:', error)
+    ElMessage.error('评论发表失败')
+    console.error('发表评论失败:', error)
   }
 }
 
@@ -582,10 +583,10 @@ async function handleLike(comment) {
   try {
     await likeComment(comment.commentId)
     comment.likeCount = (comment.likeCount || 0) + 1
-    ElMessage.success('鐐硅禐鎴愬姛')
+    ElMessage.success('点赞成功')
   } catch (error) {
-    ElMessage.error('鐐硅禐澶辫触')
-    console.error('鐐硅禐澶辫触:', error)
+    ElMessage.error('点赞失败')
+    console.error('点赞失败:', error)
   }
 }
 
@@ -608,12 +609,12 @@ async function submitReply(parentId) {
       content: replyContent.value.trim(),
       parentId: parentId
     })
-    ElMessage.success('鍥炲鎴愬姛')
+    ElMessage.success('回复成功')
     cancelReply()
     await loadComments()
   } catch (error) {
-    ElMessage.error('鍥炲澶辫触')
-    console.error('鍥炲澶辫触:', error)
+    ElMessage.error('回复失败')
+    console.error('回复失败:', error)
   }
 }
 
@@ -634,19 +635,19 @@ function formatDate(dateStr) {
 onMounted(async () => {
   const courseId = route.params.courseId
   if (!courseId) {
-    ElMessage.error('璇剧▼ID鏃犳晥')
+    ElMessage.error('课程ID无效')
     return
   }
   try {
     sections.value = normalizeSectionsOrder(await getStudentContent(courseId))
   } catch (error) {
-    console.error('鍔犺浇璇剧▼鍐呭澶辫触:', error)
+    console.error('加载课程内容失败:', error)
     return
   }
   try {
     await loadProgress()
   } catch (error) {
-    console.error('鍔犺浇瀛︿範杩涘害澶辫触:', error)
+    console.error('加载学习进度失败:', error)
   }
   loadCommentCount()
   let firstResource = null
