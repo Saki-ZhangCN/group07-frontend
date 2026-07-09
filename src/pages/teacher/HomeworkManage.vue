@@ -52,7 +52,6 @@
                 <div class="card-meta">
                   <span><el-icon><Clock /></el-icon> {{ formatDate(hw.deadline) }}</span>
                   <span><el-icon><Document /></el-icon> {{ hw.questionCount }}道题</span>
-                  <span><el-icon><Trophy /></el-icon> {{ hw.totalScore }}分</span>
                   <span>
                     <el-icon><User /></el-icon> 提交 {{ hw.submittedCount || 0 }}/{{ hw.totalStudents || 0 }}
                   </span>
@@ -81,14 +80,11 @@
                 <el-table-column label="提交时间" prop="submitTime" />
                 <el-table-column label="状态" prop="status">
                   <template #default="scope">
-                    <el-tag :type="scope.row.status === 'submitted' ? 'warning' : 'info'" size="small">
-                      {{ scope.row.status === 'submitted' ? '待批改' : '批改中' }}
-                    </el-tag>
+                    <el-tag type="warning" size="small">未批改</el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column label="操作">
                   <template #default="scope">
-                    <el-button type="primary" size="small" @click="viewDetail(scope.row)">查看详情</el-button>
                     <el-button type="warning" size="small" @click="grade(scope.row)">批改</el-button>
                   </template>
                 </el-table-column>
@@ -111,18 +107,8 @@
         <el-form-item label="作业标题" required>
           <el-input v-model="form.title" placeholder="请输入作业标题" />
         </el-form-item>
-        <el-form-item label="作业描述">
-          <el-textarea v-model="form.description" :rows="3" placeholder="请输入作业描述" />
-        </el-form-item>
         <el-form-item label="截止日期" required>
           <el-date-picker v-model="form.deadline" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择截止日期" />
-        </el-form-item>
-        <el-form-item label="总分">
-          <el-input-number v-model="form.totalScore" :min="100" :max="100" disabled />
-          <span class="fixed-score-tip">作业总分固定为 100 分</span>
-        </el-form-item>
-        <el-form-item label="及格分">
-          <el-input-number v-model="form.passScore" :min="0" :max="100" />
         </el-form-item>
         <el-form-item label="筛选习题" v-if="form.courseId">
           <div class="question-filters">
@@ -156,40 +142,6 @@
       </template>
     </el-dialog>
 
-    <!-- 查看详情弹窗 -->
-    <el-dialog v-model="detailVisible" title="作业详情" width="800px">
-      <div v-if="detail" class="detail-content">
-        <div class="detail-header">
-          <span class="student-name">学员：{{ detail.studentName }}</span>
-          <span class="homework-title">作业：{{ detail.homeworkTitle }}</span>
-          <span class="submit-time">提交时间：{{ detail.submitTime }}</span>
-          <span class="total-score">总分：{{ detail.totalScore }}分</span>
-        </div>
-        <div class="answers-list">
-          <div v-for="(answer, index) in detail.answers" :key="answer.answerId" class="answer-item">
-            <div class="answer-header">
-              <span class="answer-number">{{ index + 1 }}.</span>
-              <span class="answer-type">{{ getQuestionTypeName(answer.type) }}</span>
-              <span class="answer-score">（{{ answer.fullScore || 10 }}分）</span>
-            </div>
-            <div class="question-content">{{ answer.content }}</div>
-            <div class="answer-content">
-              <span class="label">学生答案：</span>
-              <span class="value">{{ answer.answer || '未作答' }}</span>
-            </div>
-            <div v-if="answer.standardAnswer" class="standard-answer">
-              <span class="label">标准答案：</span>
-              <span class="value">{{ answer.standardAnswer }}</span>
-            </div>
-            <div v-if="answer.teacherComment" class="teacher-comment">
-              <span class="label">教师点评：</span>
-              <span class="value">{{ answer.teacherComment }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </el-dialog>
-
     <!-- 已批改作业查看弹窗 -->
     <el-dialog v-model="reviewedVisible" title="已批改作业查看" width="860px">
       <div class="review-toolbar">
@@ -207,14 +159,13 @@
         <div class="grade-header">
           <span class="student-name">当前学员：{{ reviewedData.studentName }}</span>
           <span class="homework-title">作业：{{ reviewedData.homeworkTitle }}</span>
-          <span class="total-score">得分：{{ reviewedData.score ?? 0 }}/{{ reviewedData.totalScore }}分</span>
+          <span class="total-score">得分：{{ formatScore(reviewedData.score) }}/{{ formatScore(reviewedData.totalScore) }}分</span>
         </div>
         <div class="answers-list">
           <div v-for="(answer, index) in reviewedData.answers" :key="answer.answerId" class="answer-item">
             <div class="answer-header">
               <span class="answer-number">{{ index + 1 }}.</span>
               <span class="answer-type">{{ getQuestionTypeName(answer.type) }}</span>
-              <span class="answer-score">（{{ answer.fullScore || 10 }}分）</span>
             </div>
             <div class="question-content">{{ answer.content }}</div>
             <div class="answer-content">
@@ -224,21 +175,19 @@
             <div v-if="answer.standardAnswer" class="standard-answer">
               <span class="label">标准答案：</span>
               <span class="value">{{ answer.standardAnswer }}</span>
-            </div>
-            <div class="grade-input">
+            </div>            <div class="grade-input">
               <div class="grade-input-row">
-                <span class="label">本题得分：{{ answer.score || 0 }} 分</span>
-              </div>
-              <div v-if="answer.teacherComment" class="grade-input-row">
-                <span class="label">教师点评：</span>
-                <span class="value">{{ answer.teacherComment }}</span>
+                <span class="label">判定：</span>
+                <template v-if="answer.correct !== null && answer.correct !== undefined">
+                  <el-tag :type="answer.correct ? 'success' : 'danger'" size="small">{{ answer.correct ? '正确' : '错误' }}</el-tag>
+                </template>
+                <el-radio-group v-else v-model="answer.manualCorrect" size="small">
+                  <el-radio-button :label="true">正确</el-radio-button>
+                  <el-radio-button :label="false">错误</el-radio-button>
+                </el-radio-group>
               </div>
             </div>
           </div>
-        </div>
-        <div class="grade-comment" v-if="reviewedData.comment">
-          <span class="label">整体评语：</span>
-          <p class="review-comment">{{ reviewedData.comment }}</p>
         </div>
       </div>
       <el-empty v-else description="暂无已批改提交" />
@@ -254,14 +203,13 @@
         <div class="grade-header">
           <span class="student-name">学员：{{ gradeData.studentName }}</span>
           <span class="homework-title">作业：{{ gradeData.homeworkTitle }}</span>
-          <span class="total-score">总分：{{ gradeData.totalScore }}分</span>
+          <span class="total-score">总分：{{ formatScore(gradeData.totalScore) }}分</span>
         </div>
         <div class="answers-list">
           <div v-for="(answer, index) in gradeData.answers" :key="answer.answerId" class="answer-item">
             <div class="answer-header">
               <span class="answer-number">{{ index + 1 }}.</span>
               <span class="answer-type">{{ getQuestionTypeName(answer.type) }}</span>
-              <span class="answer-score">（{{ answer.fullScore || 10 }}分）</span>
             </div>
             <div class="question-content">{{ answer.content }}</div>
             <div class="answer-content">
@@ -271,37 +219,24 @@
             <div v-if="answer.standardAnswer" class="standard-answer">
               <span class="label">标准答案：</span>
               <span class="value">{{ answer.standardAnswer }}</span>
-            </div>
-            <div v-if="isSubjective(answer.type)" class="grade-input">
+            </div>            <div class="grade-input">
               <div class="grade-input-row">
-                <span class="label">得分：</span>
-                <el-input-number v-model="answer.score" :min="0" :max="answer.fullScore || 100" :step="10" size="small" />
-                <el-button size="small" type="default" @click="answer.score = 0">0分</el-button>
-                <el-button size="small" type="primary" @click="answer.score = answer.fullScore || 100">满分</el-button>
-              </div>
-              <div class="grade-input-row">
-                <span class="label">点评：</span>
-                <el-input v-model="answer.teacherComment" type="textarea" :rows="2" placeholder="请输入点评" style="flex: 1;" />
-              </div>
-            </div>
-            <div v-else class="grade-input">
-              <div class="grade-input-row">
-                <span class="label">本题得分：{{ answer.score || 0 }} 分</span>
-              </div>
-              <div class="grade-input-row">
-                <span class="label">点评：</span>
-                <el-input v-model="answer.teacherComment" type="textarea" :rows="2" placeholder="请输入点评（可选）" style="flex: 1;" />
+                <span class="label">判定：</span>
+                <template v-if="answer.correct !== null && answer.correct !== undefined">
+                  <el-tag :type="answer.correct ? 'success' : 'danger'" size="small">{{ answer.correct ? '正确' : '错误' }}</el-tag>
+                </template>
+                <el-radio-group v-else v-model="answer.manualCorrect" size="small">
+                  <el-radio-button :label="true">正确</el-radio-button>
+                  <el-radio-button :label="false">错误</el-radio-button>
+                </el-radio-group>
               </div>
             </div>
           </div>
         </div>
         <div class="grade-summary">
-          <span class="summary-label">总得分：</span>
-          <span class="summary-value">{{ totalScore }}</span>
-        </div>
-        <div class="grade-comment">
-          <span class="label">整体评语：</span>
-          <el-input v-model="overallComment" type="textarea" :rows="3" placeholder="请输入整体评语（可选）" />
+          <span class="summary-label">整份作业得分：</span>
+          <el-input-number v-model="manualScore" :min="0" :max="100" :step="1" :precision="0" />
+          <span class="summary-value">{{ totalScore }} / 100</span>
         </div>
       </div>
       <template #footer>
@@ -362,16 +297,14 @@ const questionLoading = ref(false)
 const questionCategory = ref('')
 const filters = ref({ difficulty: '', type: '', keyword: '' })
 const form = ref({
-  courseId: '', title: '', description: '', deadline: '',
-  totalScore: 100, passScore: 60, exerciseIds: []
+  courseId: '', title: '', deadline: '',
+  exerciseIds: []
 })
 
 // 批改
 const submissions = ref([])
-const detailVisible = ref(false)
 const gradeVisible = ref(false)
 const reviewedVisible = ref(false)
-const detail = ref(null)
 const gradeData = ref(null)
 const overallComment = ref('')
 const reviewedHomework = ref(null)
@@ -380,19 +313,21 @@ const reviewedData = ref(null)
 const reviewedIndex = ref(0)
 const reviewStudentKeyword = ref('')
 
-const totalScore = computed(() => {
-  if (!gradeData.value?.answers) return 0
-  return gradeData.value.answers.reduce((sum, answer) => sum + (answer.score || 0), 0)
-})
+const manualScore = ref(0)
+const totalScore = computed(() => Math.round(Number(manualScore.value || 0)))
 
 // 工具函数
 function getStatusLabel(status) {
   return { draft: '草稿', published: '已发布', closed: '已结束' }[status] || status
 }
+function formatScore(value) {
+  const n = Number(value ?? 0)
+  return Math.round(Number.isFinite(n) ? n : 0)
+}
 function difficultyLabel(value) { return { easy: '简单', medium: '中等', hard: '困难' }[value] || value }
 function difficultyType(value) { return { easy: 'success', medium: 'warning', hard: 'danger' }[value] || 'info' }
 function typeLabel(value) { return { single: '单选', multiple: '多选', judge: '判断', blank: '填空', short: '简答' }[value] || value }
-function isSubjective(type) { return !['single', 'multiple', 'judge'].includes(type) }
+function isSubjective(type) { return !['single', 'multiple', 'judge', 'blank', 'fill'].includes(type) }
 function getQuestionTypeName(type) {
   return { single: '单选题', multiple: '多选题', judge: '判断题', fill: '填空题', blank: '填空题', essay: '问答题', short: '简答题' }[type] || type
 }
@@ -460,7 +395,7 @@ function sortHomework() {
 
 // 发布作业
 function openCreate() {
-  form.value = { courseId: selectedCourseId.value || '', title: '', description: '', deadline: '', totalScore: 100, passScore: 60, exerciseIds: [] }
+  form.value = { courseId: selectedCourseId.value || '', title: '', deadline: '', exerciseIds: [] }
   exercises.value = []
   questionCategory.value = ''
   filters.value = { difficulty: '', type: '', keyword: '' }
@@ -485,8 +420,8 @@ async function remove(id) {
 
 function editHomework(hw) {
   form.value = {
-    courseId: hw.courseId || '', title: hw.title, description: hw.description || '',
-    deadline: hw.deadline || '', totalScore: 100, passScore: hw.passScore || 60, exerciseIds: []
+    courseId: hw.courseId || '', title: hw.title,
+    deadline: hw.deadline || '', exerciseIds: []
   }
   loadExercises()
   showCreateForm.value = true
@@ -494,7 +429,7 @@ function editHomework(hw) {
 
 async function submitForm() {
   if (!validateForm()) return
-  await createHomework({ ...form.value, totalScore: 100, status: 'draft' })
+  await createHomework({ ...form.value, status: 'draft' })
   showCreateForm.value = false
   await load()
   ElMessage.success('保存草稿成功')
@@ -503,7 +438,7 @@ async function submitForm() {
 async function submitAndPublish() {
   if (!validateForm()) return
   await ElMessageBox.confirm(`确认向《${courses.value.find(c => c.courseId === form.value.courseId)?.courseName}》的选课学生发布 ${form.value.exerciseIds.length} 道题吗？`, '发布确认', { type: 'warning' })
-  await createHomework({ ...form.value, totalScore: 100, status: 'published' })
+  await createHomework({ ...form.value, status: 'published' })
   showCreateForm.value = false
   await load()
   ElMessage.success('作业发布成功')
@@ -514,8 +449,6 @@ function validateForm() {
   if (!form.value.title.trim()) { ElMessage.warning('请输入作业标题'); return false }
   if (!form.value.deadline) { ElMessage.warning('请选择截止时间'); return false }
   if (!form.value.exerciseIds.length) { ElMessage.warning('请至少选择一道题'); return false }
-  if (form.value.passScore < 0 || form.value.passScore > 100) { ElMessage.warning('及格分必须在 0-100 分之间'); return false }
-  form.value.totalScore = 100
   return true
 }
 
@@ -526,14 +459,11 @@ async function publishHomework(hw) {
 }
 
 // 批改
-async function viewDetail(row) {
-  detail.value = await getSubmissionDetail(row.submissionId)
-  detailVisible.value = true
-}
 
 async function grade(row) {
   gradeData.value = JSON.parse(JSON.stringify(await getSubmissionDetail(row.submissionId)))
   overallComment.value = ''
+  manualScore.value = Math.round(Number(gradeData.value?.score || 0))
   gradeVisible.value = true
 }
 
@@ -573,17 +503,15 @@ async function nextReviewed() {
 }
 
 async function submitGrade() {
-  const subjectiveAnswers = gradeData.value.answers.filter(a => isSubjective(a.type))
-  const scores = {}
-  const comments = {}
-  subjectiveAnswers.forEach(a => { if (a.score !== undefined) scores[a.questionId] = a.score })
-  gradeData.value.answers.forEach(a => { if (a.teacherComment) comments[a.questionId] = a.teacherComment })
-  await gradeSubmission(gradeData.value.submissionId, {
-    score: totalScore.value, comment: overallComment.value || '教师已完成批改', scores, comments
-  })
+  const score = Math.max(0, Math.min(100, Math.round(Number(manualScore.value || 0))))
+  const correctness = {}
+  gradeData.value.answers.forEach(a => { if (a.manualCorrect !== undefined) correctness[a.questionId] = a.manualCorrect })
+  const missing = gradeData.value.answers.some(a => (a.correct === null || a.correct === undefined) && a.manualCorrect === undefined)
+  if (missing) { ElMessage.warning('请为主观题选择正确或错误'); return }
+  await gradeSubmission(gradeData.value.submissionId, { score, comment: '', correctness })
   ElMessage.success('批改完成')
   gradeVisible.value = false
-  await loadSubmissions()
+  if (typeof loadSubmissions === 'function') await loadSubmissions()
   await load()
 }
 
@@ -849,3 +777,4 @@ onMounted(() => {
   line-height: 1.6;
 }
 </style>
+

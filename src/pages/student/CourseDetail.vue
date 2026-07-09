@@ -100,56 +100,33 @@
             </div>
           </section>
           
-          <!-- 课程大纲 -->
+          <!-- 课程目录 -->
           <section class="content-section">
-            <h2 class="section-title">课程大纲</h2>
-            <div class="chapters-list">
-              <div 
-                class="chapter-item" 
-                v-for="(chapter, index) in chapters" 
-                :key="chapter.chapterId"
-              >
-                <div class="chapter-header">
-                  <span class="chapter-number">第{{ index + 1 }}章</span>
-                  <span class="chapter-title">{{ chapter.chapterName }}</span>
-                  <span class="chapter-duration">{{ chapter.duration ? Math.round(chapter.duration / 60) + '分钟' : '' }}</span>
+            <div class="section-heading">
+              <h2 class="section-title">课程目录</h2>
+              <el-button v-if="directoryItems.length > catalogPreviewCount" type="primary" size="large" @click="catalogExpanded = !catalogExpanded">
+                {{ catalogExpanded ? '收起目录' : '展开全部章节' }}
+              </el-button>
+            </div>
+            <div class="catalog-list" v-if="directoryItems.length">
+              <div class="catalog-item" v-for="item in visibleDirectoryItems" :key="item.key">
+                <div class="catalog-section" v-if="item.type === 'section'">
+                  <span class="catalog-section-order">{{ item.order }}</span>
+                  <span>{{ item.title }}</span>
+                </div>
+                <div class="catalog-lesson" v-else>
+                  <span class="catalog-lesson-order">{{ item.order }}</span>
+                  <span class="catalog-lesson-title">{{ item.title }}</span>
+                  <span class="catalog-duration">{{ item.duration ? Math.round(item.duration / 60) + '分钟' : '' }}</span>
                 </div>
               </div>
             </div>
-          </section>
-          
-          <!-- 课程评价 -->
-          <section class="content-section">
-            <h2 class="section-title">学员评价</h2>
-            <div class="reviews-list" v-if="reviews.length > 0">
-              <div class="review-item" v-for="review in reviews" :key="review.reviewId">
-                <div class="review-header">
-                  <el-avatar :size="40">
-                    <el-icon><UserFilled /></el-icon>
-                  </el-avatar>
-                  <div class="review-user">
-                    <span class="review-name">{{ review.userName }}</span>
-                    <span class="review-date">{{ review.createTime }}</span>
-                  </div>
-                  <div class="review-rating">
-                    <el-icon v-for="n in 5" :key="n" :class="{ active: n <= review.rating }">
-                      <Star />
-                    </el-icon>
-                  </div>
-                </div>
-                <div class="review-content">
-                  <p>{{ review.content }}</p>
-                </div>
-              </div>
-            </div>
-            <div class="empty-reviews" v-else>
-              <el-empty description="暂无评价" />
-            </div>
+            <el-empty v-else description="暂无课程目录" />
           </section>
           
           <!-- 课程评论 -->
           <section class="content-section">
-            <h2 class="section-title">课程评论</h2>
+            <h2 class="section-title">学员评价</h2>
             
             <div class="comments-list" v-if="comments.length > 0">
               <div class="comment-item" v-for="comment in comments" :key="comment.commentId">
@@ -273,7 +250,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { courseCoverUrl, useFallbackCover } from '../../utils/assets.js'
-import { getCourseDetail, enrollCourse, withdrawCourse, getCourseReviews, favoriteCourse, getCourseChapters, getCourseComments, addCourseComment, likeComment } from '../../api/course.js'
+import { getCourseDetail, enrollCourse, withdrawCourse, favoriteCourse, getCourseChapters, getCourseComments, addCourseComment, likeComment } from '../../api/course.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -298,14 +275,50 @@ const course = ref({
   status: ''
 })
 
-const reviews = ref([])
 const chapters = ref([])
+const sections = ref([])
+const catalogExpanded = ref(false)
+const catalogPreviewCount = 8
 const recommendations = ref([])
 
 const comments = ref([])
 const newComment = ref('')
 const replyingTo = ref('')
 const replyContent = ref('')
+
+const directoryItems = computed(() => {
+  if (sections.value.length) {
+    return sections.value.flatMap((section, sectionIndex) => {
+      const items = [{
+        type: 'section',
+        key: section.sectionId || `section-${sectionIndex}`,
+        order: section.sectionOrder || sectionIndex + 1,
+        title: section.sectionName
+      }]
+      for (const lesson of section.lessons || []) {
+        items.push({
+          type: 'lesson',
+          key: lesson.chapterId,
+          order: lesson.chapterOrder || '',
+          title: lesson.chapterName,
+          duration: lesson.duration
+        })
+      }
+      return items
+    })
+  }
+  return chapters.value.map((chapter, index) => ({
+    type: 'lesson',
+    key: chapter.chapterId,
+    order: index + 1,
+    title: chapter.chapterName,
+    duration: chapter.duration
+  }))
+})
+
+const visibleDirectoryItems = computed(() => {
+  return catalogExpanded.value ? directoryItems.value : directoryItems.value.slice(0, catalogPreviewCount)
+})
 
 function formatDuration(hours) {
   if (!hours) return '0小时'
@@ -386,6 +399,7 @@ function loadCourseDetail() {
       teacherTitle: data.teacherTitle || '',
       status: data.status
     }
+    sections.value = Array.isArray(data.sections) ? data.sections : []
     if (data.enrolled !== undefined) {
       isEnrolled.value = data.enrolled
     }
@@ -396,17 +410,9 @@ function loadCourseDetail() {
   })
 }
 
-function loadReviews() {
-  getCourseReviews(courseId, { page: 1, size: 5 }).then(data => {
-    reviews.value = data.reviews || []
-  }).catch(() => {
-    reviews.value = []
-  })
-}
-
 function loadChapters() {
   getCourseChapters(courseId).then(data => {
-    chapters.value = data.chapters || []
+    chapters.value = Array.isArray(data) ? data : (data.chapters || [])
   }).catch(() => {
     chapters.value = []
   })
@@ -502,7 +508,6 @@ function formatDate(dateStr) {
 
 onMounted(() => {
   loadCourseDetail()
-  loadReviews()
   loadChapters()
   loadRecommendations()
   loadComments()
@@ -648,45 +653,77 @@ onMounted(() => {
   margin-bottom: var(--spacing-lg);
 }
 
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.section-heading .section-title {
+  margin-bottom: 0;
+}
+
+.catalog-toggle-btn {
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
 .course-description {
   font-size: var(--font-size-base);
   color: var(--gray-600);
   line-height: 1.8;
 }
 
-.chapters-list {
+.catalog-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-xs);
 }
 
-.chapter-item {
-  border: 1px solid var(--gray-100);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+.catalog-item {
+  border-radius: var(--radius-md);
 }
 
-.chapter-header {
+.catalog-section,
+.catalog-lesson {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  background: var(--gray-50);
+  gap: var(--spacing-sm);
+  min-height: 38px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
 }
 
-.chapter-number {
+.catalog-section {
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font-weight: 600;
+}
+
+.catalog-lesson {
+  margin-left: var(--spacing-lg);
+  border: 1px solid var(--gray-100);
+}
+
+.catalog-section-order,
+.catalog-lesson-order {
+  flex: 0 0 auto;
+  min-width: 34px;
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--primary-500);
 }
 
-.chapter-title {
+.catalog-lesson-title {
   flex: 1;
   font-weight: 500;
   color: var(--gray-800);
 }
 
-.chapter-duration {
+.catalog-duration {
   font-size: var(--font-size-sm);
   color: var(--gray-500);
 }

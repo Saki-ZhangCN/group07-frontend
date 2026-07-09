@@ -227,8 +227,8 @@ onMounted(() => {
 }
 
 .homework-items {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: var(--spacing-lg);
 }
 
@@ -290,6 +290,7 @@ onMounted(() => {
 }
 
 .empty-state {
+  grid-column: 1 / -1;
   text-align: center;
   padding: var(--spacing-3xl);
   color: var(--gray-400);

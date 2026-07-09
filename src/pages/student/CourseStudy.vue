@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="study-container">
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -13,8 +13,8 @@
           </svg>
           <span class="progress-text">{{ overallProgress }}%</span>
         </div>
-        <p class="progress-label">已学</p>
-        <button @click="goToCourseDetail" class="course-detail-btn">课程详情</button>
+        <p class="progress-label">宸插</p>
+        <button @click="goToCourseDetail" class="course-detail-btn">璇剧▼璇︽儏</button>
       </div>
       <div class="chapter-list">
         <div v-for="section in sections" :key="section.sectionId" class="chapter-section">
@@ -66,45 +66,45 @@
       <template v-if="current">
         <div class="content-header">
           <h2>{{ current.sectionName }}</h2>
-          <h3>{{ current.chapterName }} · {{ current.title }}</h3>
+          <h3>{{ current.chapterName }} 路 {{ current.title }}</h3>
         </div>
         
         <div v-if="kind === 'video'" class="video-player-wrapper">
-          <video ref="videoPlayerRef" :src="current.url" controls class="video-player"
+          <video ref="videoPlayerRef" :src="resourceUrl(current.url)" controls controlsList="nodownload" class="video-player"
+            @contextmenu.prevent
             @loadedmetadata="onVideoLoaded" @timeupdate="onVideoTimeUpdate"
             @seeking="onVideoSeeking" @seeked="onVideoSeeked"
             @play="onVideoPlay" @pause="onVideoPause" @ended="onVideoEnded">
-            您的浏览器不支持视频播放
+            鎮ㄧ殑娴忚鍣ㄤ笉鏀寔瑙嗛鎾斁
           </video>
         </div>
         
-        <div v-else class="pdf-viewer-wrapper"><PdfViewer :src="current.url" :title="current.title" /></div>
+        <div v-else class="pdf-viewer-wrapper"><PdfViewer :src="resourceUrl(current.url)" :title="current.title" /></div>
         
         <div class="content-footer">
           <button v-if="prevResource" @click="selectPrev" class="nav-btn prev-btn">
             <el-icon><ArrowLeft /></el-icon>
-            上一资源
+            涓婁竴璧勬簮
           </button>
           <button v-if="nextResource" @click="selectNext" class="nav-btn next-btn">
-            下一资源
+            涓嬩竴璧勬簮
             <el-icon><ArrowRight /></el-icon>
           </button>
           <button @click="toggleComments" class="comment-toggle-btn" :class="{ active: showComments }">
             <el-icon><ChatDotRound /></el-icon>
-            {{ comments.length }}条评论
-          </button>
+            {{ commentCount }}鏉¤瘎璁?          </button>
         </div>
       </template>
       
       <div v-else class="empty-state">
         <el-icon :size="48"><FolderOpened /></el-icon>
-        <p>请选择一个小节的学习资源</p>
+        <p>璇烽€夋嫨涓€涓皬鑺傜殑瀛︿範璧勬簮</p>
       </div>
     </main>
     
     <aside class="comments-panel" :class="{ show: showComments }">
       <div class="comments-header">
-        <h3>评论（{{ comments.length }}）</h3>
+        <h3>评论（{{ commentCount }}）</h3>
         <button @click="toggleComments" class="close-btn">
           <el-icon><Close /></el-icon>
         </button>
@@ -128,7 +128,7 @@
               </button>
               <button @click="handleReply(comment)" class="action-btn">
                 <el-icon><ChatLineRound /></el-icon>
-                回复
+                鍥炲
               </button>
             </div>
             
@@ -150,7 +150,7 @@
                     </button>
                     <button @click="handleReply(reply)" class="action-btn">
                       <el-icon><ChatLineRound /></el-icon>
-                      回复
+                      鍥炲
                     </button>
                   </div>
                 </div>
@@ -161,26 +161,26 @@
               <input 
                 v-model="replyContent" 
                 type="text" 
-                placeholder="输入回复内容..." 
+                placeholder="杈撳叆鍥炲鍐呭..." 
                 class="reply-input"
                 @keyup.enter="submitReply(comment.commentId)"
               />
               <button @click="submitReply(comment.commentId)" class="submit-reply-btn">发送</button>
-              <button @click="cancelReply" class="cancel-reply-btn">取消</button>
+              <button @click="cancelReply" class="cancel-reply-btn">鍙栨秷</button>
             </div>
           </div>
         </div>
         
         <div v-if="!comments.length" class="no-comments">
           <el-icon :size="48"><Message /></el-icon>
-          <p>暂无评论，来说两句吧</p>
+          <p>鏆傛棤璇勮锛屾潵璇翠袱鍙ュ惂</p>
         </div>
       </div>
       
       <div class="comments-footer">
         <textarea 
           v-model="newComment" 
-          placeholder="发表评论..." 
+          placeholder="鍙戣〃璇勮..." 
           class="comment-input"
           rows="3"
           maxlength="500"
@@ -188,7 +188,7 @@
         <div class="comment-submit-bar">
           <span class="char-count">{{ newComment.length }}/500</span>
           <button @click="submitComment" class="submit-btn" :disabled="!newComment.trim()">
-            发表
+            鍙戣〃
           </button>
         </div>
       </div>
@@ -200,10 +200,11 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getStudentContent } from '../../api/courseContent.js'
-import { getCourseComments, addCourseComment, likeComment } from '../../api/course.js'
+import { getCourseComments, addCourseComment, likeComment, getCommentCount } from '../../api/course.js'
 import { reportStudyDuration, getCourseProgress, completeLearningResource } from '../../api/analysis.js'
 import { ElMessage } from 'element-plus'
 import PdfViewer from '../../components/PdfViewer.vue'
+import { resourceUrl } from '../../utils/assets.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -228,11 +229,12 @@ const progressOffset = computed(() => {
 
 const showComments = ref(false)
 const comments = ref([])
+const commentCount = ref(0)
 const newComment = ref('')
 const replyingTo = ref('')
 const replyContent = ref('')
 
-// 学习时长追踪
+// 瀛︿範鏃堕暱杩借釜
 const studyAccumulatedSeconds = ref(0)
 const studyTimer = ref(null)
 const studyReportTimer = ref(null)
@@ -244,6 +246,7 @@ const isPageVisible = ref(true)
 const completedKeys = ref(new Set())
 let watchedSeconds = new Set()
 let lastVideoTime = 0
+let lastVideoTickAt = 0
 let videoSeeking = false
 
 function getChapterId() {
@@ -314,20 +317,23 @@ async function reportTime() {
       resourceId: currentResourceId.value || undefined,
       duration: seconds
     })
-    console.log(`学习时长已上报: ${seconds}秒, 类型: ${kind.value}`)
+    console.log(`瀛︿範鏃堕暱宸蹭笂鎶? ${seconds}绉? 绫诲瀷: ${kind.value}`)
   } catch (error) {
-    console.error('学习时长上报失败:', error)
+    console.error('瀛︿範鏃堕暱涓婃姤澶辫触:', error)
     studyAccumulatedSeconds.value += seconds
   }
 }
 
 function onVideoPlay() {
   isVideoPlaying.value = true
+  lastVideoTime = videoPlayerRef.value?.currentTime || 0
+  lastVideoTickAt = performance.now()
 }
 
 function onVideoLoaded() {
   watchedSeconds = new Set()
   lastVideoTime = videoPlayerRef.value?.currentTime || 0
+  lastVideoTickAt = performance.now()
   videoSeeking = false
 }
 
@@ -337,6 +343,7 @@ function onVideoSeeking() {
 
 function onVideoSeeked() {
   lastVideoTime = videoPlayerRef.value?.currentTime || 0
+  lastVideoTickAt = performance.now()
   videoSeeking = false
 }
 
@@ -344,12 +351,16 @@ function onVideoTimeUpdate() {
   const player = videoPlayerRef.value
   if (!player || videoSeeking || player.paused || !isPageVisible.value) return
   const now = player.currentTime
+  const tickAt = performance.now()
   const delta = now - lastVideoTime
-  // 浏览器正常播放的 timeupdate 间隔远小于2秒；跳播区间不计入观看覆盖。
-  if (delta > 0 && delta <= 2) {
+  const elapsedSeconds = lastVideoTickAt ? Math.max(0.1, (tickAt - lastVideoTickAt) / 1000) : 0.25
+  const playbackRate = Math.max(0.25, Number(player.playbackRate || 1))
+  const maxNaturalDelta = Math.max(2, elapsedSeconds * playbackRate + 1.2)
+  if (delta > 0 && delta <= maxNaturalDelta) {
     for (let second = Math.floor(lastVideoTime); second <= Math.floor(now); second++) watchedSeconds.add(second)
   }
   lastVideoTime = now
+  lastVideoTickAt = tickAt
 }
 
 function onVideoPause() {
@@ -360,11 +371,12 @@ async function onVideoEnded() {
   isVideoPlaying.value = false
   reportTime()
   const duration = videoPlayerRef.value?.duration || 0
-  const required = Math.max(1, Math.floor(duration) - 1)
+  const required = Math.max(1, Math.ceil(duration * 0.9))
   if (duration > 0 && watchedSeconds.size >= required) {
     await markCurrentResourceComplete('video')
   } else {
-    ElMessage.warning('视频存在未完整播放的片段，本次暂不计入已学')
+    const percent = duration > 0 ? Math.round((watchedSeconds.size / duration) * 100) : 0
+    ElMessage.warning(`视频真实观看进度约 ${percent}%，需达到 90% 才计入已学`)
   }
 }
 
@@ -376,6 +388,35 @@ async function loadProgress() {
 
 function normalizeProgress(value) {
   return Math.round(Number(value || 0))
+}
+
+function parseOrderParts(value) {
+  const text = String(value ?? '').trim()
+  if (!text) return [Number.MAX_SAFE_INTEGER]
+  return text.split('.').map(part => {
+    const number = Number.parseInt(part, 10)
+    return Number.isFinite(number) ? number : Number.MAX_SAFE_INTEGER
+  })
+}
+
+function compareNaturalOrder(a, b, field) {
+  const left = parseOrderParts(a?.[field])
+  const right = parseOrderParts(b?.[field])
+  const length = Math.max(left.length, right.length)
+  for (let i = 0; i < length; i++) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return String(a?.[field] ?? '').localeCompare(String(b?.[field] ?? ''), 'zh-Hans-CN', { numeric: true })
+}
+
+function normalizeSectionsOrder(rawSections) {
+  return [...(rawSections || [])]
+    .sort((a, b) => compareNaturalOrder(a, b, 'sectionOrder'))
+    .map(section => ({
+      ...section,
+      lessons: [...(section.lessons || [])].sort((a, b) => compareNaturalOrder(a, b, 'chapterOrder'))
+    }))
 }
 
 function resourceKey(resourceType, resourceId) {
@@ -402,12 +443,16 @@ async function markCurrentResourceComplete(resourceType) {
     completedKeys.value = new Set(data?.completedKeys || [])
     ElMessage.success(resourceType === 'video' ? '视频已完整学习' : '资料已计入学习进度')
   } catch (error) {
-    console.error('更新学习进度失败:', error)
+    console.error('鏇存柊瀛︿範杩涘害澶辫触:', error)
   }
 }
 
 function onVisibilityChange() {
   isPageVisible.value = !document.hidden
+  if (isPageVisible.value && videoPlayerRef.value) {
+    lastVideoTime = videoPlayerRef.value.currentTime || 0
+    lastVideoTickAt = performance.now()
+  }
 }
 
 function handleBeforeUnload() {
@@ -497,12 +542,22 @@ function toggleComments() {
   }
 }
 
+async function loadCommentCount() {
+  try {
+    const count = await getCommentCount(route.params.courseId)
+    commentCount.value = Number(count || 0)
+  } catch (error) {
+    console.error('鍔犺浇璇勮鏁伴噺澶辫触:', error)
+  }
+}
+
 async function loadComments() {
   try {
     const data = await getCourseComments(route.params.courseId)
     comments.value = data || []
+    commentCount.value = comments.value.length
   } catch (error) {
-    console.error('加载评论失败:', error)
+    console.error('鍔犺浇璇勮澶辫触:', error)
   }
 }
 
@@ -514,12 +569,12 @@ async function submitComment() {
       courseId: route.params.courseId,
       content: newComment.value.trim()
     })
-    ElMessage.success('评论发表成功')
+    ElMessage.success('璇勮鍙戣〃鎴愬姛')
     newComment.value = ''
     await loadComments()
   } catch (error) {
-    ElMessage.error('评论发表失败')
-    console.error('发表评论失败:', error)
+    ElMessage.error('璇勮鍙戣〃澶辫触')
+    console.error('鍙戣〃璇勮澶辫触:', error)
   }
 }
 
@@ -527,10 +582,10 @@ async function handleLike(comment) {
   try {
     await likeComment(comment.commentId)
     comment.likeCount = (comment.likeCount || 0) + 1
-    ElMessage.success('点赞成功')
+    ElMessage.success('鐐硅禐鎴愬姛')
   } catch (error) {
-    ElMessage.error('点赞失败')
-    console.error('点赞失败:', error)
+    ElMessage.error('鐐硅禐澶辫触')
+    console.error('鐐硅禐澶辫触:', error)
   }
 }
 
@@ -553,12 +608,12 @@ async function submitReply(parentId) {
       content: replyContent.value.trim(),
       parentId: parentId
     })
-    ElMessage.success('回复成功')
+    ElMessage.success('鍥炲鎴愬姛')
     cancelReply()
     await loadComments()
   } catch (error) {
-    ElMessage.error('回复失败')
-    console.error('回复失败:', error)
+    ElMessage.error('鍥炲澶辫触')
+    console.error('鍥炲澶辫触:', error)
   }
 }
 
@@ -579,20 +634,21 @@ function formatDate(dateStr) {
 onMounted(async () => {
   const courseId = route.params.courseId
   if (!courseId) {
-    ElMessage.error('课程ID无效')
+    ElMessage.error('璇剧▼ID鏃犳晥')
     return
   }
   try {
-    sections.value = await getStudentContent(courseId)
+    sections.value = normalizeSectionsOrder(await getStudentContent(courseId))
   } catch (error) {
-    console.error('加载课程内容失败:', error)
+    console.error('鍔犺浇璇剧▼鍐呭澶辫触:', error)
     return
   }
   try {
     await loadProgress()
   } catch (error) {
-    console.error('加载学习进度失败:', error)
+    console.error('鍔犺浇瀛︿範杩涘害澶辫触:', error)
   }
+  loadCommentCount()
   let firstResource = null
   for (const section of sections.value) {
     expandedSections.value.push(section.sectionId)

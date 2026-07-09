@@ -17,10 +17,6 @@
         :collapse="isCollapsed"
         router
       >
-        <el-menu-item index="/teacher">
-          <el-icon><HomeFilled /></el-icon>
-          <span>工作台</span>
-        </el-menu-item>
         <el-menu-item index="/teacher/courses">
           <el-icon><FolderOpened /></el-icon>
           <span>课程管理</span>
@@ -102,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -117,7 +113,6 @@ const isCollapsed = ref(false)
 const activeMenu = computed(() => route.path)
 const pageTitle = computed(() => {
   const titles = {
-    '/teacher': '讲师工作台',
     '/teacher/courses': '课程管理',
     '/teacher/course/create': '创建课程',
     '/teacher/course/edit': '编辑课程',
@@ -128,11 +123,15 @@ const pageTitle = computed(() => {
     '/teacher/analysis': '学情分析',
     '/teacher/profile': '个人中心'
   }
-  return titles[route.path] || '讲师工作台'
+  return titles[route.path] || '课程管理'
 })
 
 const userName = computed(() => authStore.userName || '讲师')
 const userAvatar = computed(() => authStore.userInfo?.avatar || '')
+
+onMounted(() => {
+  authStore.refreshProfile().catch(() => {})
+})
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value

@@ -15,6 +15,14 @@ export function getLearningReport() {
   })
 }
 
+export function getAiStudentReport(params) {
+  return request({
+    url: '/analysis/ai/student-report',
+    method: 'get',
+    params
+  })
+}
+
 /**
  * 获取学习时长统计
  * @param {Object} params - 查询参数
@@ -49,6 +57,13 @@ export function getAccuracyTrend(params) {
 export function getClassLearningData(courseId) {
   return request({
     url: `/analysis/class/${courseId}`,
+    method: 'get'
+  })
+}
+
+export function getAiClassReport(courseId) {
+  return request({
+    url: `/analysis/ai/class/${courseId}`,
     method: 'get'
   })
 }

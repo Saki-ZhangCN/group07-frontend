@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -145,6 +145,10 @@ const pageTitle = computed(() => {
 
 const userName = computed(() => authStore.userName || '学员')
 const userAvatar = computed(() => authStore.userInfo?.avatar || '')
+
+onMounted(() => {
+  authStore.refreshProfile().catch(() => {})
+})
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value

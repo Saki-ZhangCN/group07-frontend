@@ -15,13 +15,9 @@
     <div v-if="result && result.status === 'graded'" class="result-section">
       <div class="result-header">
         <span class="result-status">已批改</span>
-        <span class="result-score" :class="result.score >= homework.passScore ? 'pass' : 'fail'">
-          得分：{{ result.score }}/{{ result.totalScore }}
+        <span class="result-score" >
+          得分：{{ formatScore(result.score) }}/{{ result.totalScore || 100 }}
         </span>
-      </div>
-      <div v-if="result.comment" class="result-comment">
-        <span class="comment-label">教师评语：</span>
-        {{ result.comment }}
       </div>
       <div class="result-meta">
         <span>提交时间：{{ result.submitTime }}</span>
@@ -40,7 +36,6 @@
           <div class="question-header">
             <span class="question-number">{{ index + 1 }}.</span>
             <span class="question-type">{{ getQuestionTypeName(q.type) }}</span>
-            <span class="question-score">（{{ q.score }}分）</span>
             <span v-if="getAnswerResult(q.id) && getAnswerResult(q.id).correct !== null" class="answer-status" :class="getAnswerResult(q.id).correct ? 'correct' : 'wrong'">
               {{ getAnswerResult(q.id).correct ? '正确' : '错误' }}
             </span>
@@ -78,10 +73,6 @@
               <span class="label">标准答案：</span>
               <span class="value correct">{{ getAnswerResult(q.id)?.standardAnswer }}</span>
             </div>
-            <div v-if="getAnswerResult(q.id)?.teacherComment" class="answer-row teacher-comment-row">
-              <span class="label">教师点评：</span>
-              <span class="value teacher-comment-value">{{ getAnswerResult(q.id)?.teacherComment }}</span>
-            </div>
             <div v-if="getAnswerResult(q.id)?.analysis" class="answer-row">
               <span class="label">解析：</span>
               <span class="value">{{ getAnswerResult(q.id)?.analysis }}</span>
@@ -111,10 +102,16 @@ const router = useRouter()
 const submitting = ref(false)
 const result = ref(null)
 
-const homework = ref({ questions: [], passScore: 60 })
+const homework = ref({ questions: [] })
 
 const isGraded = computed(() => result.value && result.value.status === 'graded')
 const canAnswer = computed(() => !result.value || result.value.status === 'rejected')
+
+
+function formatScore(value) {
+  const n = Number(value || 0)
+  return Math.round(Number.isFinite(n) ? n : 0)
+}
 
 function getQuestionTypeName(type) {
   const types = {
@@ -375,3 +372,4 @@ async function submit() {
   font-weight: 500;
 }
 </style>
+

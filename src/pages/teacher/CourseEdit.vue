@@ -39,9 +39,13 @@
     <ChapterManager :course-id="courseId" />
     
     <div class="action-buttons">
-      <el-button @click="saveAsDraft" :loading="saving">保存为草稿</el-button>
-      <el-button type="primary" @click="submitForReview" :loading="saving">提交审核</el-button>
-      <el-button @click="goBack">取消</el-button>
+      <button class="btn btn-secondary" @click="saveAsDraft" :disabled="saving">
+        {{ saving ? '保存中...' : '保存为草稿' }}
+      </button>
+      <button class="btn btn-primary" @click="submitForReview" :disabled="saving">
+        {{ saving ? '提交中...' : '提交审核' }}
+      </button>
+      <button class="btn btn-ghost" @click="goBack">取消</button>
     </div>
   </div>
 </template>

@@ -44,7 +44,7 @@ const routes = [
     component: () => import('../layouts/TeacherLayout.vue'),
     meta: { requiresAuth: true, role: 'teacher' },
     children: [
-      { path: '', name: 'TeacherDashboard', component: () => import('../pages/teacher/Dashboard.vue') },
+      { path: '', redirect: '/teacher/courses' },
       { path: 'courses', name: 'CourseManage', component: () => import('../pages/teacher/CourseManage.vue') },
       { path: 'course/create', name: 'CourseCreate', component: () => import('../pages/teacher/CourseCreate.vue') },
       { path: 'course/edit/:id', name: 'CourseEdit', component: () => import('../pages/teacher/CourseEdit.vue') },
@@ -71,7 +71,6 @@ const routes = [
       { path: 'courses/list', name: 'CourseList', component: () => import('../pages/admin/CourseList.vue') },
       { path: 'exams', name: 'ExamManage', component: () => import('../pages/admin/ExamManage.vue') },
       { path: 'announcements', name: 'Announcement', component: () => import('../pages/admin/Announcement.vue') },
-      { path: 'statistics', name: 'Statistics', component: () => import('../pages/admin/Statistics.vue') },
       { path: 'profile', name: 'AdminProfile', component: () => import('../pages/admin/Profile.vue') }
     ]
   },
@@ -108,7 +107,7 @@ router.beforeEach((to, from, next) => {
   if (to.name === 'Login' && authStore.isLoggedIn) {
     const redirectMap = {
       student: 'StudentHome',
-      teacher: 'TeacherDashboard',
+      teacher: 'CourseManage',
       admin: 'AdminDashboard'
     }
     next({ name: redirectMap[authStore.userRole] || 'StudentHome' })

@@ -41,10 +41,6 @@
           <el-icon><ChatDotRound /></el-icon>
           <span>公告管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/statistics">
-          <el-icon><TrendCharts /></el-icon>
-          <span>统计分析</span>
-        </el-menu-item>
         <el-menu-item index="/admin/profile">
           <el-icon><User /></el-icon>
           <span>个人中心</span>
@@ -107,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -128,7 +124,6 @@ const pageTitle = computed(() => {
     '/admin/courses/list': '课程列表',
     '/admin/exams': '题库管理',
     '/admin/announcements': '公告管理',
-    '/admin/statistics': '统计分析',
     '/admin/profile': '个人中心'
   }
   return titles[route.path] || '运营管理后台'
@@ -136,6 +131,10 @@ const pageTitle = computed(() => {
 
 const userName = computed(() => authStore.userName || '管理员')
 const userAvatar = computed(() => authStore.userInfo?.avatar || '')
+
+onMounted(() => {
+  authStore.refreshProfile().catch(() => {})
+})
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value

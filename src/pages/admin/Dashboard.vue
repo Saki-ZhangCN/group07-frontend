@@ -53,7 +53,7 @@
             <el-tag size="small" type="success">良好</el-tag>
           </div>
           <div class="stat-body">
-            <div class="stat-value">{{ stats.completionRate }}%</div>
+            <div class="stat-value">{{ Number(stats.completionRate || 0).toFixed(1) }}%</div>
           </div>
         </div>
         
@@ -148,19 +148,19 @@ function initCharts() {
     lineChart = echarts.init(lineChartRef.value)
     lineChart.setOption({
       tooltip: { trigger: 'axis' },
-      legend: { data: ['登录人数', '学习人数'] },
+      legend: { data: ['学习人数', '登录人数'] },
       xAxis: { type: 'category', data: activityData.dates },
       yAxis: { type: 'value' },
       series: [
         {
-          name: '登录人数',
+          name: '学习人数',
           type: 'line',
           smooth: true,
           data: activityData.values,
           lineStyle: { color: '#6366F1' }
         },
         {
-          name: '学习人数',
+          name: '登录人数',
           type: 'line',
           smooth: true,
           data: completionData.values,
@@ -196,7 +196,7 @@ onMounted(async () => {
   const [summary, ranking, activity, completion] = await Promise.all([
     getDashboardStats(), getCourseRanking({}), getActivityTrend({}), getCompletionRate({})
   ])
-  stats.value = { ...stats.value, ...summary, activeStudents: summary.activeUsers, avgRating: Number(summary.averageScore||0).toFixed(1) }
+  stats.value = { ...stats.value, ...summary, activeStudents: summary.activeUsers, completionRate: Number(summary.completionRate || 0).toFixed(1), avgRating: Number(summary.averageScore||0).toFixed(1) }
   activityData = activity || activityData
   completionData = completion || completionData
   courseRanking.value = ranking || []
@@ -224,7 +224,7 @@ onUnmounted(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--spacing-lg);
 }
 
@@ -232,10 +232,6 @@ onUnmounted(() => {
   background: white;
   padding: var(--spacing-lg);
   border-radius: var(--radius-xl);
-}
-
-.stat-card.large {
-  grid-column: span 2;
 }
 
 .stat-header {
@@ -259,10 +255,6 @@ onUnmounted(() => {
   font-size: 28px;
   font-weight: 700;
   color: var(--gray-800);
-}
-
-.stat-card.large .stat-value {
-  font-size: 36px;
 }
 
 .trend-section {
@@ -366,10 +358,6 @@ onUnmounted(() => {
 @media (max-width: 1023px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .stat-card.large {
-    grid-column: span 1;
   }
   
   .overview-grid {

@@ -39,9 +39,9 @@
       <el-alert title="课程保存后，将进入“课程章节”页面创建每节课并上传视频或PDF资料。" type="info" :closable="false" />
       
       <el-form-item>
-        <el-button type="primary" @click="submitForm">创建并管理章节</el-button>
-        <el-button @click="saveDraft">保存草稿</el-button>
-        <el-button @click="cancelForm">取消</el-button>
+        <button class="btn btn-primary" @click="submitForm">创建并管理章节</button>
+        <button class="btn btn-secondary" @click="saveDraft">保存草稿</button>
+        <button class="btn btn-ghost" @click="cancelForm">取消</button>
       </el-form-item>
     </el-form>
   </div>

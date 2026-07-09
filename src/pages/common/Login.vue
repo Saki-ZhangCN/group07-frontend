@@ -105,11 +105,6 @@
               </div>
             </el-form-item>
             
-            <div class="login-options">
-              <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-              <a href="#" class="forgot-link">忘记密码？</a>
-            </div>
-            
             <el-button
               type="primary"
               size="large"
@@ -144,7 +139,6 @@ const authStore = useAuthStore()
 const loginFormRef = ref(null)
 const selectedRole = ref('student')
 const loading = ref(false)
-const rememberMe = ref(false)
 const captchaImage = ref('')
 const captchaText = ref('')
 const captchaGenerator = new CaptchaGenerator({
@@ -392,17 +386,6 @@ refreshCaptcha()
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.login-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.forgot-link {
-  font-size: var(--font-size-sm);
-  color: var(--primary-500);
 }
 
 .login-btn {
